@@ -1,76 +1,144 @@
+
+notifications:
+  email: false
+
 branches:
   only:
     - master
+    - master_builds
+    - test
+    - test_builds
 
 language: rust
 
-rust:
-  - stable
-  - beta
-  - nightly
-
 matrix:
-  allow_failures:
-    - rust: nightly
   fast_finish: true
 
 cache: cargo
 
 env:
-  matrix:
-    - TRAVIS_NODE_VER=6
-    - TRAVIS_NODE_VER=8
-    - TRAVIS_NODE_VER=9
-    - TRAVIS_NODE_VER=10
-  
   global:
-    secure: JmR0cUK8EPkBo0cHD4Ml5j9ESA34q7idhTUj5vBvwYQ14VLmS3BnPmwN8pmjQptt0rknB6yqduZRj1IukZIf0y0rr+kV6yv3/hVCth8NeCV2qdDrn32uJzaY9jV/ULC03bwiT7LsM43WUnIOxphn2nfoY8WNs9kBCVu3ndJ+ctZWRpI5mtJ/7ouKi2dPrQmdnmVLT3dtoPqTDNKkc/r7qJIQzpW6TBMGKnKBhpl1pzexIMc5iZATpUqXN6fCVQlmhMSO+CeLYH9lYMTxrOHCUcTwzHi3+OH9PcY7DM8CylNd3GA9LP9DC7uKOcJJExVr2k7aPEmYNa8pIvcOmn/vzfZ5fMca47hwyOycoCbER9Q6bXAuEceDJQ2G5hyK+SG209okPJ3IuvYeXARD4nYD3jxI+J2YHmprjGLod/I7qAw05E6SfOau3t9kjVJyDi8D+UWlKSgBi6C8wwKzG6MYUNsfDlrXll1fQMbsTn+YNbOjode0Fuqw2EhPmg1LUxfEYI5VudFTLahsQcKy8gSNyBBc0jLlEGvcn+Qt5VVJcIok6bkD7yy+4dWdv5sZcg3s4PF295H5+hPiJ5BCgqRhxce6hEbCReM++w+O84oXqcrhgXNCLs1fHC0/6LR046KLg5CzprukYLQ0kdzwO8P2lo7970XscVx2tognWSb/z0A=
+    - secure: JmR0cUK8EPkBo0cHD4Ml5j9ESA34q7idhTUj5vBvwYQ14VLmS3BnPmwN8pmjQptt0rknB6yqduZRj1IukZIf0y0rr+kV6yv3/hVCth8NeCV2qdDrn32uJzaY9jV/ULC03bwiT7LsM43WUnIOxphn2nfoY8WNs9kBCVu3ndJ+ctZWRpI5mtJ/7ouKi2dPrQmdnmVLT3dtoPqTDNKkc/r7qJIQzpW6TBMGKnKBhpl1pzexIMc5iZATpUqXN6fCVQlmhMSO+CeLYH9lYMTxrOHCUcTwzHi3+OH9PcY7DM8CylNd3GA9LP9DC7uKOcJJExVr2k7aPEmYNa8pIvcOmn/vzfZ5fMca47hwyOycoCbER9Q6bXAuEceDJQ2G5hyK+SG209okPJ3IuvYeXARD4nYD3jxI+J2YHmprjGLod/I7qAw05E6SfOau3t9kjVJyDi8D+UWlKSgBi6C8wwKzG6MYUNsfDlrXll1fQMbsTn+YNbOjode0Fuqw2EhPmg1LUxfEYI5VudFTLahsQcKy8gSNyBBc0jLlEGvcn+Qt5VVJcIok6bkD7yy+4dWdv5sZcg3s4PF295H5+hPiJ5BCgqRhxce6hEbCReM++w+O84oXqcrhgXNCLs1fHC0/6LR046KLg5CzprukYLQ0kdzwO8P2lo7970XscVx2tognWSb/z0A=
+    - RUST_BACKTRACE: 1
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install cmake
   # install node
   - source $HOME/.nvm/nvm.sh
   - nvm install "${TRAVIS_NODE_VER}"
   - nvm use "${TRAVIS_NODE_VER}"
 
-  - COMMIT_MESSAGE=$(git show -s --format=%B $TRAVIS_COMMIT | tr -d '\n')
-  # only publish binary on tag release
-  - PUBLISH_BINARY=false
-  - if [[ $TRAVIS_BRANCH = `git describe --tags --always HEAD` ]]; then PUBLISH_BINARY=true; fi;
-  # or if commit tells us to
-  - if test "${COMMIT_MESSAGE#*'[publish binary]'}" != "$COMMIT_MESSAGE"; then PUBLISH_BINARY=true; fi;
-  # only if on stable branch
-  - if [[ $TRAVIS_RUST_VERSION != "stable" ]]; then PUBLISH_BINARY=false; fi;
-  - echo "Publishing native platform Binary Package? ->" $PUBLISH_BINARY
-
-install:
-  - git clone https://github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_REPO_SLUG
-  - cd $TRAVIS_REPO_SLUG
-  - git checkout -qf $TRAVIS_COMMIT
-
-before_script:
-  - git config --global user.email "p.jaszkow@gmail.com"
-  - git config --global user.name "Travis CI"
-  - git config credential.helper "store --file=.git/credentials"
-  - echo "https://${GH_TOKEN}:@github.com" > .git/credentials
-
 script:
-  - npm install
+  - npm install --ignore-scripts
   - npm test
-  - node_modules/.bin/neon build
   - node -e 'require("./").compile("{{thing}}")'
 
-after_success:
-  - git fetch
-  - git checkout "${TRAVIS_BRANCH}_builds"
-  - git reset --hard "origin/${TRAVIS_BRANCH}"
-  - git checkout "origin/${TRAVIS_BRANCH}_builds" pre-built
-  - node build
-  - git add --all pre-built
-  - git commit -m "Updated binary modules"
-  - if [[ "${PUBLISH_BINARY}" = "true" ]]; then git push -f && echo "Successfully published binary"; fi;
+stages:
+  - name: test
+    if: NOT branch =~ _builds$ OR type != push
+  - name: build binaries
+    if: type = push AND branch =~ _builds$
+  - name: push binaries
+    if: type = push AND branch =~ _builds$
+
+jobs:
+  allow_failures:
+    - rust: nightly
+    - env: TRAVIS_NODE_VER=10
+
+  include:
+    # - stage: test
+    #   rust: stable # beta, nightly
+    #   env: TRAVIS_NODE_VER=6 # 8, 9, 10
+
+    # - stage: build binaries
+    #   rust: stable
+    #   env: TRAVIS_NODE_VER=6 # 8, 9, 10
+    #   before_script: source ./scripts/ci/vars.sh
+    #   after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: push binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=8
+      before_install:
+        - git clone https://github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_REPO_SLUG
+        - cd $TRAVIS_REPO_SLUG
+        - git checkout $TRAVIS_BRANCH
+      before_script: source ./scripts/ci/vars.sh
+      script: source ./scripts/ci/push-binaries.sh
 
 
-notifications:
-  email: false
+    - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=6
+
+    - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=8
+
+    - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=9
+
+    - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=10
+
+    - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=6
+
+    - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=8
+
+    - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=9
+
+    - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=10
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=6
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=8
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=9
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=10
+
+
+
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=6
+      before_script: source ./scripts/ci/vars.sh
+      after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=8
+      before_script: source ./scripts/ci/vars.sh
+      after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=9
+      before_script: source ./scripts/ci/vars.sh
+      after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=10
+      before_script: source ./scripts/ci/vars.sh
+      after_success: source ./scripts/ci/add-binary.sh
+

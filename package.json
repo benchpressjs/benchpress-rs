@@ -13,8 +13,9 @@
     "neon-cli": "^0.1.22"
   },
   "scripts": {
+    "test": "neon build && cd native && cargo test --release",
     "install": "neon build >> build.log 2>&1 || exit 0",
-    "build": "neon build && node ./build",
-    "test": "cd native && cargo test --release"
+    "release": "node scripts/release",
+    "build-configs": "node scripts/build-configs"
   }
 }
