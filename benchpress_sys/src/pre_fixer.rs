@@ -1,15 +1,6 @@
 use regex::{Regex, Captures};
 use onig;
 
-// add value context for in-loop helpers
-fn fix_loop_helpers(input: String) -> String {
-    lazy_static! {
-        static ref LEGACY_LOOP_HELPER: Regex = Regex::new(r"\{function\.(?P<name>[^}\n ,]+)\}").unwrap();
-    }
-
-    LEGACY_LOOP_HELPER.replace_all(input.as_ref(), "{function.$name, @value}").into_owned()
-}
-
 // `<!-- BEGIN stuff -->` => `<!-- BEGIN ../stuff -->` and `<!-- BEGIN stuff -->`
 // we need to add the fallback by duplicating under a different key
 // only apply to nested blocks
@@ -33,50 +24,124 @@ fn fix_iter(input: String, first: bool) -> String {
     })
 }
 
-// wrap `@key`, `@value`, `@index` in mustaches
-// if they aren't in a mustache already
-fn fix_outside_tokens(input: String) -> String {
+// combined regex replacement
+fn combined(input: String) -> String {
     lazy_static! {
-        static ref OUTSIDE_TOKENS: Regex = Regex::new(r"(\{{1,2}[^}]+\}{1,2})|(<!--[^>]+-->)|(@key|@value|@index)").unwrap();
+        static ref COMBINED: Regex = Regex::new(r"(?x)
+            # helpers root
+            (?P<if_helpers>
+                # '\x20' is a space
+                <!--\x20IF\x20(
+                    ?:function\.
+                    (?P<if_helpers_name>[@a-zA-Z0-9/._:]+)
+                    (?:\s*,\s*)?
+                    (?P<if_helpers_args>.*?)
+                )\x20-->
+            )
+            |
+            # legacy loop helpers
+            (?P<loop_helpers>
+                \{function\.(?P<loop_helpers_name>[^}\n\x20,]+)\}
+            )
+            |
+            # outside tokens
+            (?P<outside_tokens>
+                (?:\{{1,2}[^}]+\}{1,2})|(?:<!--[^>]+-->)|
+                (?P<outside_tokens_lone>@key|@value|@index)
+            )
+        ").unwrap();
     }
 
-    OUTSIDE_TOKENS.replace_all(input.as_ref(), |caps: &Captures| {
-        let orig = String::from(caps.get(0).map_or("", |m| m.as_str()));
-        let lone = String::from(caps.get(3).map_or("", |m| m.as_str()));
+    COMBINED.replace_all(input.as_ref(), |caps: &Captures| {
+        if let Some(_) = caps.name("if_helpers") {
+            // add root data to legacy if helpers
+            let name = String::from(&caps["if_helpers_name"]);
+            let args = String::from(&caps["if_helpers_args"]);
 
-        if lone.len() > 0 {
-            format!("{{{}}}", lone)
+            if args.len() > 0 {
+                format!("<!-- IF function.{}, @root, {} -->", name, args)
+            } else {
+                format!("<!-- IF function.{}, @root -->", name)
+            }
+        } else if let Some(_) = caps.name("loop_helpers") {
+            // add value context for in-loop helpers
+            let name = String::from(&caps["loop_helpers_name"]);
+            format!("{{function.{}, @value}}", name)
+        } else if let Some(_) = caps.name("outside_tokens") {
+            // wrap `@key`, `@value`, `@index` in mustaches
+            // if they aren't in a mustache already
+            let orig = String::from(&caps[0]);
+            
+            if let Some(lone) = caps.name("outside_tokens_lone") {
+                format!("{{{}}}", lone.as_str())
+            } else {
+                orig
+            }
         } else {
-            orig
+            String::new()
         }
     }).into_owned()
 }
 
-// add root data to legacy if helpers
-fn fix_helpers_root(input: String) -> String {
-    lazy_static! {
-        static ref IF_HELPERS: Regex = Regex::new(r"<!-- IF (?:function\.([@a-zA-Z0-9/._:]+)(?:\s*,\s*)?(.*?)) -->").unwrap();
-    }
-
-    IF_HELPERS.replace_all(input.as_ref(), |caps: &Captures| {
-        let helper_name = String::from(&caps[1]);
-        let args = String::from(&caps[2]);
-
-        if args.len() > 0 {
-            format!("<!-- IF function.{}, @root, {} -->", helper_name, args)
-        } else {
-            format!("<!-- IF function.{}, @root -->", helper_name)
-        }        
-    }).into_owned()
+pub fn pre_fix(input: String) -> String {
+    combined(fix_iter(input, true))
 }
 
-pub fn pre_fix(input: String) -> String {
-    fix_helpers_root(
-        fix_outside_tokens(
-            fix_iter(
-                fix_loop_helpers(input),
-                true
-            )
-        )
-    )
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loop_helpers() {
+        let source = "
+        {function.foo_bar}
+        ".to_string();
+        let expected = "
+        {function.foo_bar, @value}
+        ".to_string();
+
+        assert_eq!(combined(source), expected);
+    }
+
+    #[test]
+    fn outside_tokens() {
+        let source = "
+        @key : @value
+        @index : @value
+        {@key} : {@value}
+        {@index} : {@value}
+        ".to_string();
+        let expected = "
+        {@key} : {@value}
+        {@index} : {@value}
+        {@key} : {@value}
+        {@index} : {@value}
+        ".to_string();
+
+        assert_eq!(combined(source), expected);
+    }
+
+    #[test]
+    fn helpers_root() {
+        let source = "
+        <!-- IF function.foo_bar -->
+        asdf ghjk
+        <!-- END -->
+
+        <!-- IF function.hello_world, one, two -->
+        qwer tyui
+        <!-- END -->
+        ".to_string();
+        let expected = "
+        <!-- IF function.foo_bar, @root -->
+        asdf ghjk
+        <!-- END -->
+
+        <!-- IF function.hello_world, @root, one, two -->
+        qwer tyui
+        <!-- END -->
+        ".to_string();
+
+        assert_eq!(combined(source), expected);
+    }
 }
