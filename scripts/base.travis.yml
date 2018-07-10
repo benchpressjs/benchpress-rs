@@ -29,7 +29,6 @@ before_install:
 script:
   - npm install --ignore-scripts
   - npm test
-  - node -e 'require("./").compile("{{thing}}")'
 
 stages:
   - name: test

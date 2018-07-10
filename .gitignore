@@ -1,3 +1,4 @@
+benchpress_sys/target
 native/target
 native/index.node
 native/artifacts.json
@@ -6,3 +7,4 @@ native/artifacts.json
 **/.DS_Store
 node_modules
 *.log
+.vscode

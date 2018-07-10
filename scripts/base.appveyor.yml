@@ -28,7 +28,6 @@ build: false
 test_script:
   - npm install --ignore-scripts
   - npm test
-  - node -e 'require("./").compile("{{thing}}")'
 
 for:
 -
