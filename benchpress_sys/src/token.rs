@@ -19,7 +19,6 @@ pub enum Token {
     LeftParen, // (
     RightParen, // )
     Comma, // ,
-    Space,
 
     RawOpen, // {{
     RawClose, // }}
@@ -49,7 +48,6 @@ impl ToString for Token {
             &Token::LeftParen => "(".to_string(), // (
             &Token::RightParen => ")".to_string(), // )
             &Token::Comma => ",".to_string(), // ,
-            &Token::Space => " ".to_string(),
 
             &Token::RawOpen => "{{".to_string(), // {{
             &Token::RawClose => "}}".to_string(), // }}

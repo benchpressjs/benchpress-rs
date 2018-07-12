@@ -73,7 +73,7 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                         let parts: Vec<Token> = iter.take_while_ref(|x| match x {
                             &Token::Identifier(_) | &Token::LegacyHelper |
                             &Token::LeftParen | &Token::RightParen |
-                            &Token::StringLiteral(_) | &Token::Comma | &Token::Space => true,
+                            &Token::StringLiteral(_) | &Token::Comma => true,
                             _ => false,
                         }).collect();
 
@@ -82,31 +82,22 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                         match iter.next() {
                             Some(Token::BlockClose) => match keyword {
                                 Token::If => output.push(MetaToken::IfStart {
-                                    raw: String::new(),
+                                    raw: format!("<!-- IF {} -->", rest_text),
                                     neg: neg,
-                                    test: parts.into_iter().filter(|x| match x {
-                                        &Token::Space => false,
-                                        _ => true,
-                                    }).collect(),
+                                    test: parts,
                                 }),
                                 Token::Iter => {
                                     output.push(MetaToken::IterStart {
-                                        raw: String::new(),
-                                        subject: parts.into_iter().filter(|x| match x {
-                                            &Token::Space => false,
-                                            _ => true,
-                                        }).collect(),
+                                        raw: format!("<!-- BEGIN {} -->", rest_text),
+                                        subject: parts,
                                     });
                                 },
                                 Token::Else => output.push(MetaToken::Else {
-                                    raw: String::new()
+                                    raw: "<!-- ELSE -->".to_string()
                                 }),
                                 Token::End => output.push(MetaToken::End {
-                                    raw: String::new(),
-                                    subject: parts.into_iter().filter(|x| match x {
-                                        &Token::Space => false,
-                                        _ => true,
-                                    }).collect()
+                                    raw: format!("<!-- END {} -->", rest_text),
+                                    subject: parts,
                                 }),
 
                                 _ => (),
@@ -128,7 +119,7 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                 let parts: Vec<Token> = iter.take_while_ref(|x| match x {
                     &Token::Identifier(_) | &Token::LegacyHelper |
                     &Token::LeftParen | &Token::RightParen |
-                    &Token::StringLiteral(_) | &Token::Comma | &Token::Space => true,
+                    &Token::StringLiteral(_) | &Token::Comma => true,
                     _ => false,
                 }).collect();
 
@@ -138,18 +129,12 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                     (&Token::RawOpen, Some(Token::RawClose)) => 
                         output.push(MetaToken::Raw {
                             raw: format!("{{{{{}}}}}", rest_text),
-                            subject: parts.into_iter().filter(|x| match x {
-                                &Token::Space => false,
-                                _ => true,
-                            }).collect(),
+                            subject: parts,
                         }),
                     (&Token::EscapedOpen, Some(Token::EscapedClose)) => 
                         output.push(MetaToken::Escaped {
                             raw: format!("{{{}}}", rest_text),
-                            subject: parts.into_iter().filter(|x| match x {
-                                &Token::Space => false,
-                                _ => true,
-                            }).collect(),
+                            subject: parts,
                         }),
 
                     (_, Some(inner)) => output.push(MetaToken::Text {

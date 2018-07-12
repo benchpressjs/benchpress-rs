@@ -97,15 +97,24 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<Token>> {
             "\"" => {
                 slicer.step();
 
+                if slicer.slice() == Some("\"".to_string()) {
+                    slicer.step();
+
+                    return Some(vec![
+                        Token::StringLiteral(String::new())
+                    ]);
+                }
+
                 while let Some(string_lit) = slicer.slice() {
                     match slicer.suffix(1).map(|x| x.chars().nth(0).unwrap()) {
                         // grow to include backslash and escaped char
                         Some('\\') => slicer.grow_by(2),
                         // finish the string
                         Some('"') => {
-                            output.push(Token::StringLiteral(string_lit.to_string()));
-                            slicer.step();
-                            break;
+                            slicer.step_by(2);
+                            return Some(vec![
+                                Token::StringLiteral(string_lit.to_string())
+                            ]);
                         },
                         Some(_) => slicer.grow(),
                         None => { return None; },
@@ -123,7 +132,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<Token>> {
             },
             // identifier or helper
             _ => {
-                if slice.chars().all(|ch| is_simple_char(ch)) {
+                if slice.chars().all(|ch| ch != '-' && is_simple_char(ch)) {
                     while let Some(_) = slicer.slice() {
                         if let Some(suffix) = slicer.suffix(1) {
                             if is_simple_char(suffix.chars().nth(0).unwrap()) {
@@ -228,15 +237,15 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<Token>> {
                 if let Some(mut expr) = lex_expression(slicer) {
                     output.append(&mut expr);
                 } else { return None; }
-            },
+            } else { return None; },
             "end" | "END" => {
-                let (yes, inc) = if slicer.followed_by(" ") {
-                    // step to the space, then to the next
-                    (true, 2)
-                } else if slicer.followed_by("IF ") {
+                let (yes, inc) = if slicer.followed_by("IF") {
                     // step to the I, F, and space, then to the next
-                    (true, 4)
-                } else { (false, 0) };
+                    (true, 3)
+                } else {
+                    // step to the space, then to the next
+                    (true, 1)
+                };
 
                 if yes {
                     output.push(Token::End);
@@ -247,7 +256,7 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<Token>> {
                         output.append(&mut expr);
                     }
                     // end subject is optional
-                }
+                } else { return None; }
             },
             "els" | "ELS" => if match slice.as_ref() {
                 "els" => slicer.followed_by("e"),
@@ -255,8 +264,8 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<Token>> {
                 _ => false,
             } {
                 output.push(Token::Else);
-                slicer.step();
-            },
+                slicer.step_by(2);
+            } else { return None; },
             _ => { return None; }
         }
     }
@@ -279,6 +288,8 @@ pub fn lex(input: &str) -> Vec<Token> {
                     slicer.step();
                     output.push(Token::Text(target.to_string()));
                     slicer.step_by(target.len());
+                } else {
+                    slicer.grow();
                 }
             },
             // escaped or raw mustache
@@ -290,8 +301,6 @@ pub fn lex(input: &str) -> Vec<Token> {
                 let mut copy = slicer.clone();
                 copy.step();
 
-                println!("1 {:?}, {:?}, {:?}, {:?}", slicer, slicer.slice(), copy, copy.slice());
-
                 let valid = if let Some(mut tokens) = lex_expression(&mut copy) {
                     let closer = match slice.as_ref() {
                         "{" => "}",
@@ -302,10 +311,6 @@ pub fn lex(input: &str) -> Vec<Token> {
                         _ => "",
                     }.to_string();
 
-                    let closer_len = closer.len();
-
-                    println!("2 {:?}, {:?}, {:?}, {:?}", slicer, slicer.slice(), copy, copy.slice());
-
                     if copy.slice() == Some(closer) {
                         let (open_token, close_token) = match slice.as_ref() {
                             "{" => (Token::EscapedOpen, Token::EscapedClose),
@@ -313,19 +318,15 @@ pub fn lex(input: &str) -> Vec<Token> {
                             _ => (Token::RawOpen, Token::RawClose),
                         };
 
-                        println!("3 {:?}, {:?}, {:?}, {:?}", slicer, slicer.slice(), copy, copy.slice());
-
                         output.push(open_token);
                         output.append(&mut tokens);
                         output.push(close_token);
 
-                        slicer.step_by(copy.end + closer_len - orig_end);
+                        slicer.step_by(copy.end - orig_end + 1);
 
                         true
                     } else { false }
                 } else { false };
-
-                println!("4 {:?}, {:?}, {:?}, {:?}", slicer, slicer.slice(), copy, copy.slice());
 
                 if !valid {
                     output.push(Token::Text(slice));
@@ -355,7 +356,7 @@ pub fn lex(input: &str) -> Vec<Token> {
                         output.append(&mut tokens);
                         output.push(Token::BlockClose);
 
-                        slicer.step_by(copy.end + closer_len - orig_end);
+                        slicer.step_by(copy.end + closer_len - orig_end - 2);
 
                         true
                     } else { false }
@@ -368,7 +369,7 @@ pub fn lex(input: &str) -> Vec<Token> {
             },
             // text
             _ => {
-                if slicer.followed_by("{") || slicer.followed_by("<!--") {
+                if slicer.followed_by("\\") || slicer.followed_by("{") || slicer.followed_by("<!--") {
                     output.push(Token::Text(slice));
                     slicer.step();
                 } else {
@@ -430,8 +431,18 @@ mod tests {
         );
 
         assert_eq!(
-            lex_expression(&mut StringSlicer::new("\"\\\\ \\ \" }")),
-            Some(vec![Token::StringLiteral(r"\\ \ ".to_string())])
+            lex_expression(&mut StringSlicer::new("\"help me to save myself\"")),
+            Some(vec![Token::StringLiteral("help me to save myself".to_string())])
+        );
+
+        assert_eq!(
+            lex_expression(&mut StringSlicer::new("function.caps, \"help me to save myself\"")),
+            Some(vec![
+                Token::LegacyHelper,
+                Token::Identifier("caps".to_string()),
+                Token::Comma,
+                Token::StringLiteral("help me to save myself".to_string())
+            ])
         );
     }
 

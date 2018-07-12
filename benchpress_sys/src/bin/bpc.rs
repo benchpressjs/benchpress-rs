@@ -47,7 +47,7 @@ fn go(input: String, debug: bool) {
 
         println!("pre fixed   \n-------------\n{}\n\n", pre_fixed);
         let lexed_fixed = format!("{:?}", lexed);
-        println!("lexed \n-------------\n{}\n\n", lexed_fixed);
+        println!("lexed       \n-------------\n{}\n\n", lexed_fixed);
         let first_parsed_fixed = format!("{:?}", first_parsed);
         println!("first parsed\n-------------\n{}\n\n", first_parsed_fixed);
         let extras_fixed_fixed = format!("{:?}", extras_fixed);
