@@ -57,11 +57,11 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                 }
             },
             
-            Token::BlockOpen(open_text) => {
+            Token::BlockOpen => {
                 let keyword = iter.next().unwrap();
                 match keyword {
-                    Token::If(ref orig_text) | Token::Iter(ref orig_text) |
-                    Token::Else(ref orig_text) | Token::End(ref orig_text) => {
+                    Token::If | Token::Iter |
+                    Token::Else | Token::End => {
                         let neg: bool = match iter.peek() {
                             Some(&Token::Bang) => {
                                 iter.next();
@@ -80,29 +80,29 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                         let rest_text = parts.clone().into_iter().map(|x| x.to_string()).collect::<String>();
 
                         match iter.next() {
-                            Some(Token::BlockClose(close_text)) => match keyword {
-                                Token::If(_) => output.push(MetaToken::IfStart {
-                                    raw: format!("{} {} {} {}", open_text, orig_text, rest_text, close_text),
+                            Some(Token::BlockClose) => match keyword {
+                                Token::If => output.push(MetaToken::IfStart {
+                                    raw: String::new(),
                                     neg: neg,
                                     test: parts.into_iter().filter(|x| match x {
                                         &Token::Space => false,
                                         _ => true,
                                     }).collect(),
                                 }),
-                                Token::Iter(_) => {
+                                Token::Iter => {
                                     output.push(MetaToken::IterStart {
-                                        raw: format!("{} {} {} {}", open_text, orig_text, rest_text, close_text),
+                                        raw: String::new(),
                                         subject: parts.into_iter().filter(|x| match x {
                                             &Token::Space => false,
                                             _ => true,
                                         }).collect(),
                                     });
                                 },
-                                Token::Else(_) => output.push(MetaToken::Else {
-                                    raw: format!("{} {} {} {}", open_text, orig_text, rest_text, close_text)
+                                Token::Else => output.push(MetaToken::Else {
+                                    raw: String::new()
                                 }),
-                                Token::End(_) => output.push(MetaToken::End {
-                                    raw: format!("{} {} {} {}", open_text, orig_text, rest_text, close_text),
+                                Token::End => output.push(MetaToken::End {
+                                    raw: String::new(),
                                     subject: parts.into_iter().filter(|x| match x {
                                         &Token::Space => false,
                                         _ => true,
@@ -112,14 +112,14 @@ pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
                                 _ => (),
                             },
                             Some(tok) => output.push(MetaToken::Text {
-                                source: format!("{} {} {} {}", open_text, orig_text, rest_text, tok.to_string())
+                                source: String::new()
                             }),
                             None => (),
                         }
                     },
 
                     _ => output.push(MetaToken::Text {
-                        source: open_text,
+                        source: String::new(),
                     }),
                 }
             },

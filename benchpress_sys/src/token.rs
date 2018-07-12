@@ -1,20 +1,19 @@
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Token {
     Text(String),
-    Unknown(String),
 
     Identifier(String),
     StringLiteral(String),
 
     LegacyHelper, // function.
 
-    BlockOpen(String), // {{{, <!--
-    BlockClose(String), // }}}, -->
+    BlockOpen, // {{{, <!--
+    BlockClose, // }}}, -->
 
-    If(String), // if, IF
-    Else(String), // else, ELSE
-    Iter(String), // each, BEGIN
-    End(String), // end, END, ENDIF
+    If, // if, IF
+    Else, // else, ELSE
+    Iter, // each, BEGIN
+    End, // end, END, ENDIF
 
     Bang, // !
     LeftParen, // (
@@ -32,20 +31,19 @@ impl ToString for Token {
     fn to_string(&self) -> String {
         match self {
             &Token::Text(ref val) => val.to_string(),
-            &Token::Unknown(ref val) => val.to_string(),
 
             &Token::Identifier(ref val) => val.to_string(),
             &Token::StringLiteral(ref val) => format!("\"{}\"", val.to_string()),
 
             &Token::LegacyHelper => "function.".to_string(), // function.
 
-            &Token::BlockOpen(ref val) => val.to_string(), // {{{, <!--
-            &Token::BlockClose(ref val) => val.to_string(), // }}}, -->
+            &Token::BlockOpen => String::new(), // {{{, <!--
+            &Token::BlockClose => String::new(), // }}}, -->
 
-            &Token::If(ref val) => val.to_string(), // if, IF
-            &Token::Else(ref val) => val.to_string(), // else, ELSE
-            &Token::Iter(ref val) => val.to_string(), // each, BEGIN
-            &Token::End(ref val) => val.to_string(), // end, END, ENDIF
+            &Token::If => String::new(), // if, IF
+            &Token::Else => String::new(), // else, ELSE
+            &Token::Iter => String::new(), // each, BEGIN
+            &Token::End => String::new(), // end, END, ENDIF
 
             &Token::Bang => "!".to_string(), // !
             &Token::LeftParen => "(".to_string(), // (

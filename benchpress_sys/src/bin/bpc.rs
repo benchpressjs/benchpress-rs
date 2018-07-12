@@ -35,9 +35,8 @@ fn tree_tostring(tree: Vec<Control>) -> String {
 
 fn go(input: String, debug: bool) {
     let pre_fixed = pre_fixer::pre_fix(input);
-    let first_lexed = lexer::first_pass(pre_fixed.clone());
-    let second_lexed = lexer::second_pass(first_lexed.clone());
-    let first_parsed = parser::first_pass(second_lexed.clone());
+    let lexed = lexer::lex(pre_fixed.as_ref());
+    let first_parsed = parser::first_pass(lexed.clone());
     let extras_fixed = parser::fix_extra_tokens(first_parsed.clone());
     let (tree, _) = parser::second_pass(&mut extras_fixed.clone().into_iter().peekable(), Vec::new(), 1);
 
@@ -47,13 +46,11 @@ fn go(input: String, debug: bool) {
         println!("/*");
 
         println!("pre fixed   \n-------------\n{}\n\n", pre_fixed);
-        let first_lexed_fixed = format!("{:?}", first_lexed).replace("), ", "}, ");
-        println!("first lexed \n-------------\n{}\n\n", first_lexed_fixed);
-        let second_lexed_fixed = format!("{:?}", second_lexed).replace("), ", "}, ");
-        println!("second lexed\n-------------\n{}\n\n", second_lexed_fixed);
-        let first_parsed_fixed = format!("{:?}", first_parsed).replace("), ", "}, ");
+        let lexed_fixed = format!("{:?}", lexed);
+        println!("lexed \n-------------\n{}\n\n", lexed_fixed);
+        let first_parsed_fixed = format!("{:?}", first_parsed);
         println!("first parsed\n-------------\n{}\n\n", first_parsed_fixed);
-        let extras_fixed_fixed = format!("{:?}", extras_fixed).replace("), ", "}, ");
+        let extras_fixed_fixed = format!("{:?}", extras_fixed);
         println!("extras fixed\n-------------\n{}\n\n", extras_fixed_fixed);
         println!("parse tree  \n-------------\n{}\n\n", tree_tostring(tree));
 
