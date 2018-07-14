@@ -1,4 +1,4 @@
-use parser::Control;
+use parser::{Expression, Control};
 use templates;
 
 use json;
@@ -13,10 +13,10 @@ pub fn gen_body(entry: Vec<Control>, top: bool, mut block_names: HashSet<String>
     let mut blocks: Vec<String> = Vec::new();
 
     let output = entry.into_iter().map(|elem| match elem {
-        Control::Text { source } => {
-            json::stringify(json::from(source))
+        Control::Text { value } => {
+            json::stringify(json::from(value))
         },
-        Control::If { neg, test, body, alt } => {
+        Control::If { subject, body, alt } => {
             let (b, mut b_blocks, b_block_names) = gen_body(body, top, block_names.clone());
             block_names.extend(b_block_names);
 
@@ -26,14 +26,18 @@ pub fn gen_body(entry: Vec<Control>, top: bool, mut block_names: HashSet<String>
             blocks.append(&mut b_blocks);
             blocks.append(&mut a_blocks);
 
+            let (expr, neg) = if let Expression::NegativeExpression { expr } = subject {
+                (*expr, true)
+            } else { (subject, false) };
+
             templates::if_else(
                 neg,
-                templates::expression(test),
+                templates::expression(expr),
                 b,
                 a
             )
         },
-        Control::Iter { subject_raw, suffix, subject, body, alt } => {
+        Control::Iter { suffix, subject_raw, subject, body, alt } => {
             let block = templates::iter(
                 suffix,
                 templates::expression(subject),

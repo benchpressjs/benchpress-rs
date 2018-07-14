@@ -193,6 +193,9 @@ pub fn expression(input: Expression) -> String {
                 HELPER, CONTEXT, HELPERS, helper_name, args_str
             )
         },
+        Expression::NegativeExpression { expr } => {
+            format!("!{}", expression(*expr))
+        },
     }
 }
 
