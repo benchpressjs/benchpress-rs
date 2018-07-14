@@ -10,9 +10,9 @@ fn tree_tostring(tree: Vec<Control>) -> String {
     
     for elem in tree {
         output.push_str(match elem {
-            Control::If { neg, test, body, alt } => format!(
-                "If {{ neg: {}, test: {:?}, body: {}, alt: {} }},",
-                neg, test, tree_tostring(body), tree_tostring(alt)
+            Control::If { subject, body, alt } => format!(
+                "If {{ subject: {:?}, body: {}, alt: {} }},",
+                subject, tree_tostring(body), tree_tostring(alt)
             ),
             Control::Iter { subject_raw, suffix, subject, body, alt } => format!(
                 "Iter {{ suffix: {}, raw: {}, subject: {:?}, body: {}, alt: {} }},",
@@ -35,10 +35,10 @@ fn tree_tostring(tree: Vec<Control>) -> String {
 
 fn go(input: String, debug: bool) {
     let pre_fixed = pre_fixer::pre_fix(input);
-    let lexed = lexer::lex(pre_fixed.as_ref());
-    let first_parsed = parser::first_pass(lexed.clone());
-    let extras_fixed = parser::fix_extra_tokens(first_parsed.clone());
-    let (tree, _) = parser::second_pass(&mut extras_fixed.clone().into_iter().peekable(), Vec::new(), 1);
+    let lexed = lexer::lex(&pre_fixed);
+    let first_parsed = parser::parse_instructions(&pre_fixed, lexed.clone());
+    let extras_fixed = parser::fix_extra_tokens(&pre_fixed, first_parsed.clone());
+    let (tree, _) = parser::parse_tree(&pre_fixed, &mut extras_fixed.clone().into_iter(), Vec::new(), 1);
 
     let code = generator::generate(tree.clone());
 

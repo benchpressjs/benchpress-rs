@@ -11,15 +11,10 @@ fn compile_source(call: Call) -> JsResult<JsString> {
     let scope = call.scope;
     match call.arguments.get(scope, 0) {
         Some(val) => {
-            match val.to_string(scope) {
-                Ok(source) => {
-                    let code = benchpress_sys::compile(source.value());
-                    match JsString::new(scope, code.as_ref()) {
-                        Some(ret) => Ok(ret),
-                        None => JsError::throw(Kind::SyntaxError, "failed to build a JS String"),
-                    }
-                },
-                Err(err) => Err(err),
+            let code = benchpress_sys::compile(val.to_string(scope)?.value());
+            match JsString::new(scope, code.as_ref()) {
+                Some(ret) => Ok(ret),
+                None => JsError::throw(Kind::SyntaxError, "failed to build a JS String"),
             }
         },
         None => JsError::throw(Kind::TypeError, "not enough arguments"),
