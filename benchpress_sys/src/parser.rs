@@ -1,154 +1,70 @@
-use token::Token;
+use token::{Token, TokenPos};
+use instruction::{Instruction, InstructionPos};
 
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub enum MetaToken {
-    Text { source: String },
-    Escaped { raw: String, subject: Vec<Token> },
-    Raw { raw: String, subject: Vec<Token> },
-    IfStart { raw: String, neg: bool, test: Vec<Token> },
-    IterStart { raw: String, subject: Vec<Token> },
-    Else { raw: String },
-    End { raw: String, subject: Vec<Token> },
-    EOF,
-}
-impl ToString for MetaToken {
-    fn to_string(&self) -> String {
-        match self {
-            &MetaToken::Text { ref source } => source.to_string(),
-            &MetaToken::Escaped { ref raw, subject: _ } => raw.to_string(),
-            &MetaToken::Raw { ref raw, subject: _ } => raw.to_string(),
-            &MetaToken::IfStart { ref raw, neg: _, test: _ } => raw.to_string(),
-            &MetaToken::IterStart { ref raw, subject: _ } => raw.to_string(),
-            &MetaToken::Else { ref raw } => raw.to_string(),
-            &MetaToken::End { ref raw, subject: _ } => raw.to_string(),
-            &MetaToken::EOF => String::new(),
-        }
-    }
-}
-
-use std::iter::Iterator;
-use std::iter::Peekable;
-
+use std::iter::{Iterator, Peekable};
 use itertools::Itertools;
 
-// collect individual tokens into meta tokens
-pub fn first_pass(input: Vec<Token>) -> Vec<MetaToken> {
-    let mut output: Vec<MetaToken> = Vec::new();
+pub fn parse_instructions(_source: &str, tokens: Vec<TokenPos>) -> Vec<InstructionPos> {
+    let mut output: Vec<InstructionPos> = vec![];
 
-    let mut iter = input.into_iter().peekable();
+    let mut iter = tokens.into_iter().peekable();
 
-    while let Some(outer) = iter.next() {
-        match outer {
-            Token::Text(source) => {
-                let mut text = String::from(source.as_ref());
+    while let Some(opener) = iter.next() {
+        if let Some(inst_pos) = match opener {
+            TokenPos { tok: Token::Text(_), .. } => InstructionPos::from_text(opener),
+            TokenPos { tok: Token::BlockOpen, start, .. } => {
+                let TokenPos { tok: keyword, .. } = iter.next().unwrap();
 
-                let parts = iter.take_while_ref(|x| match x {
-                    &Token::Text(_) => true,
-                    _ => false,
-                }).map(|x| match x {
-                    Token::Text(s) => s,
-                    _ => String::new(),
-                }).collect::<Vec<String>>().join("");
+                let expr: Vec<Token> = iter.peeking_take_while(|x| match x {
+                    TokenPos { tok: Token::BlockClose, .. } => false,
+                    _ => true,
+                }).map(|TokenPos { tok, .. }| tok).collect();
 
-                text.push_str(parts.as_ref());
+                let TokenPos { end, .. } = iter.next().unwrap();
 
-                if text.len() > 0 {
-                    output.push(MetaToken::Text { source: text });
-                }
+                if let Some(inst) = match keyword {
+                    Token::If => Some(Instruction::IfStart(expr)),
+                    Token::Iter => Some(Instruction::IterStart(expr)),
+                    Token::Else => Some(Instruction::Else),
+                    Token::End => Some(Instruction::End(expr)),
+                    _ => None,
+                } {
+                    Some(InstructionPos {
+                        start,
+                        end,
+                        inst,
+                    })
+                } else { None }
             },
-            
-            Token::BlockOpen => {
-                let keyword = iter.next().unwrap();
-                match keyword {
-                    Token::If | Token::Iter |
-                    Token::Else | Token::End => {
-                        let neg: bool = match iter.peek() {
-                            Some(&Token::Bang) => {
-                                iter.next();
-                                true
-                            },
-                            _ => false,
-                        };
+            TokenPos { tok: Token::RawOpen, start, .. } | 
+            TokenPos { tok: Token::EscapedOpen, start, .. } => {
+                let closer = match opener {
+                    TokenPos { tok: Token::RawOpen, .. } => Token::RawClose,
+                    // TokenPos { tok: Token::EscapedOpen, .. }
+                    _ => Token::EscapedClose,
+                };
 
-                        let parts: Vec<Token> = iter.take_while_ref(|x| match x {
-                            &Token::Identifier(_) | &Token::LegacyHelper |
-                            &Token::LeftParen | &Token::RightParen |
-                            &Token::StringLiteral(_) | &Token::Comma => true,
-                            _ => false,
-                        }).collect();
+                let expr: Vec<Token> = iter
+                    .peeking_take_while(|TokenPos { tok, .. }| tok != &closer)
+                    .map(|TokenPos { tok, .. }| tok).collect();
 
-                        let rest_text = parts.clone().into_iter().map(|x| x.to_string()).collect::<String>();
+                let TokenPos { end, .. } = iter.next().unwrap();
 
-                        match iter.next() {
-                            Some(Token::BlockClose) => match keyword {
-                                Token::If => output.push(MetaToken::IfStart {
-                                    raw: format!("<!-- IF {} -->", rest_text),
-                                    neg: neg,
-                                    test: parts,
-                                }),
-                                Token::Iter => {
-                                    output.push(MetaToken::IterStart {
-                                        raw: format!("<!-- BEGIN {} -->", rest_text),
-                                        subject: parts,
-                                    });
-                                },
-                                Token::Else => output.push(MetaToken::Else {
-                                    raw: "<!-- ELSE -->".to_string()
-                                }),
-                                Token::End => output.push(MetaToken::End {
-                                    raw: format!("<!-- END {} -->", rest_text),
-                                    subject: parts,
-                                }),
+                let inst = match opener {
+                    TokenPos { tok: Token::RawOpen, .. } => Instruction::Raw(expr),
+                    // TokenPos { tok: Token::EscapedOpen, .. }
+                    _ => Instruction::Escaped(expr),
+                };
 
-                                _ => (),
-                            },
-                            Some(tok) => output.push(MetaToken::Text {
-                                source: String::new()
-                            }),
-                            None => (),
-                        }
-                    },
-
-                    _ => output.push(MetaToken::Text {
-                        source: String::new(),
-                    }),
-                }
+                Some(InstructionPos {
+                    start,
+                    end,
+                    inst,
+                })
             },
-
-            Token::RawOpen | Token::EscapedOpen => {
-                let parts: Vec<Token> = iter.take_while_ref(|x| match x {
-                    &Token::Identifier(_) | &Token::LegacyHelper |
-                    &Token::LeftParen | &Token::RightParen |
-                    &Token::StringLiteral(_) | &Token::Comma => true,
-                    _ => false,
-                }).collect();
-
-                let rest_text = parts.clone().into_iter().map(|x| x.to_string()).collect::<String>();
-
-                match (&outer, iter.next()) {
-                    (&Token::RawOpen, Some(Token::RawClose)) => 
-                        output.push(MetaToken::Raw {
-                            raw: format!("{{{{{}}}}}", rest_text),
-                            subject: parts,
-                        }),
-                    (&Token::EscapedOpen, Some(Token::EscapedClose)) => 
-                        output.push(MetaToken::Escaped {
-                            raw: format!("{{{}}}", rest_text),
-                            subject: parts,
-                        }),
-
-                    (_, Some(inner)) => output.push(MetaToken::Text {
-                        source: format!("{}{}{}", outer.to_string(), rest_text, inner.to_string()),
-                    }),
-                    (_, None) => output.push(MetaToken::Text {
-                        source: format!("{}{}", outer.to_string(), rest_text),
-                    }),
-                }
-            },
-
-            _ => output.push(MetaToken::Text {
-                source: outer.to_string(),
-            }),
+            _ => None,
+        } {
+            output.push(inst_pos);
         }
     }
 
@@ -171,8 +87,8 @@ pub fn starts_with(full: &Vec<Token>, part: &Vec<Token>) -> bool {
     true
 }
 
-pub fn fix_extra_tokens(input: Vec<MetaToken>) -> Vec<MetaToken> {
-    let mut remove: HashSet<MetaToken> = HashSet::new();
+pub fn fix_extra_tokens(source: &str, input: Vec<InstructionPos>) -> Vec<InstructionPos> {
+    let mut remove: HashSet<InstructionPos> = HashSet::new();
     let mut expected_subjects: Vec<Vec<Token>> = Vec::new();
 
     let mut starts_count: u16 = 0;
@@ -183,12 +99,12 @@ pub fn fix_extra_tokens(input: Vec<MetaToken>) -> Vec<MetaToken> {
         let elem = &input[index];
 
         match elem {
-            &MetaToken::IfStart { raw: _, neg: _, test: ref subject } | 
-            &MetaToken::IterStart { raw: _, ref subject } => {
+            InstructionPos { inst: Instruction::IfStart(ref subject), .. } | 
+            InstructionPos { inst: Instruction::IterStart(ref subject), .. } => {
                 expected_subjects.push(subject.clone());
                 starts_count += 1;
             },
-            &MetaToken::End { raw: _, ref subject } => {
+            InstructionPos { inst: Instruction::End(ref subject), .. } => {
                 ends_count += 1;
 
                 if let Some(expected_subject) = expected_subjects.pop() {
@@ -201,11 +117,11 @@ pub fn fix_extra_tokens(input: Vec<MetaToken>) -> Vec<MetaToken> {
                         for i in (index + 1)..input.len() {
                             let ahead = &input[i];
                             match ahead {
-                                &MetaToken::IfStart { raw: _, neg: _, test: _ } |
-                                &MetaToken::IterStart { raw: _, subject: _ } => {
+                                InstructionPos { inst: Instruction::IfStart(_), .. } |
+                                InstructionPos { inst: Instruction::IterStart(_), .. } => {
                                     break;
                                 },
-                                &MetaToken::End { raw: _, subject: ref ahead_subject } => {
+                                InstructionPos { inst: Instruction::End(ref ahead_subject), .. } => {
                                     if ahead_subject.clone() == expected_subject {
                                         // found one ahead, so remove the current one
                                         remove.insert(elem.clone());
@@ -231,12 +147,12 @@ pub fn fix_extra_tokens(input: Vec<MetaToken>) -> Vec<MetaToken> {
 
         println!("Found extra token(s):");
 
-        let output = input.into_iter().map(|x| if remove.contains(&x) && diff > 0 {
-            println!("{}", x.to_string());
+        let output: Vec<InstructionPos> = input.into_iter().map(|x| if remove.contains(&x) && diff > 0 {
+            println!("{:?}", x);
 
             diff -= 1;
-            MetaToken::Text { source: x.to_string() }
-        } else { x }).collect::<Vec<MetaToken>>();
+            x.to_text(source)
+        } else { x }).collect();
 
         println!("These tokens will be passed through as text, but you should remove them to prevent issues in the future.");
 
@@ -251,18 +167,22 @@ pub enum Expression {
     HelperExpression { helper_name: String, args: Vec<Expression> },
     PathExpression { path: Vec<String> },
     StringLiteral { value: String },
+    NegativeExpression { expr: Box<Expression> },
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Control {
-    Text { source: String },
-    If { neg: bool, test: Expression, body: Vec<Control>, alt: Vec<Control> },
+    Text { value: String },
+    If { subject: Expression, body: Vec<Control>, alt: Vec<Control> },
     Iter { suffix: u16, subject_raw: String, subject: Expression, body: Vec<Control>, alt: Vec<Control> },
     Escaped { subject: Expression },
     Raw { subject: Expression },
 }
 
-fn generate_expression(iter: &mut Peekable<IntoIter<Token>>, base: Vec<String>, suffix: u16) -> Option<Expression> {
+fn generate_expression<I>(iter: &mut Peekable<I>, base: Vec<String>, suffix: u16) -> Option<Expression>
+where
+    I: Iterator<Item = Token>
+{
     let one = iter.next();
     let two = match iter.peek() {
         Some(thing) => Some(thing.clone()),
@@ -270,6 +190,15 @@ fn generate_expression(iter: &mut Peekable<IntoIter<Token>>, base: Vec<String>, 
     };
 
     match (one, two) {
+        (Some(Token::Bang), Some(_)) => {
+            if let Some(expr) = generate_expression(iter.by_ref(), base, suffix) {
+                Some(Expression::NegativeExpression {
+                    expr: Box::new(expr),
+                })
+            } else {
+                None
+            }
+        },
         (Some(Token::Identifier(ref name)), Some(Token::LeftParen)) |
         (Some(Token::LegacyHelper), Some(Token::Identifier(ref name))) => {
             iter.next();
@@ -316,80 +245,87 @@ fn generate_expression(iter: &mut Peekable<IntoIter<Token>>, base: Vec<String>, 
     }
 }
 
-use std::vec::IntoIter;
 use paths;
 
 // build the tree
-pub fn second_pass(
-    input: &mut Peekable<IntoIter<MetaToken>>,
+pub fn parse_tree<I>(
+    source: &str,
+    input: &mut I,
     base: Vec<String>,
     suffix: u16,
-) -> (Vec<Control>, MetaToken) {
+) -> (Vec<Control>, Option<InstructionPos>)
+where
+    I: Iterator<Item = InstructionPos>
+{
     let mut output: Vec<Control> = Vec::new();
 
-    let mut last: MetaToken = MetaToken::EOF;
+    let mut last: Option<InstructionPos> = None;
 
-    while let Some(tok) = input.next() {
-        match tok {
-            MetaToken::Text { source } => output.push(Control::Text { source }),
-            MetaToken::Escaped { ref raw, ref subject } |
-            MetaToken::Raw { ref raw, ref subject } => if let Some(subject) = generate_expression(
-                &mut subject.clone().into_iter().peekable(),
+    while let Some(inst_pos) = input.next() {
+        let InstructionPos { inst, .. } = inst_pos.clone();
+        match inst {
+            Instruction::Text(value) => output.push(Control::Text { value }),
+            Instruction::Escaped(subject)  => if let Some(subject) = generate_expression(
+                &mut subject.into_iter().peekable(),
                 base.clone(),
                 suffix
             ) {
-                match tok {
-                    MetaToken::Raw { raw: _, subject: _ } => output.push(Control::Raw { subject }),
-                    MetaToken::Escaped { raw: _, subject: _ } => output.push(Control::Escaped { subject }),
-                    _ => (),
-                }
-            } else {
-                output.push(Control::Text { source: raw.to_string() });
+                output.push(Control::Escaped { subject });
             },
-            MetaToken::IfStart { raw, neg, test } => {
-                if let Some(test) = generate_expression(
-                    &mut test.into_iter().peekable(),
+            Instruction::Raw(subject) => if let Some(subject) = generate_expression(
+                &mut subject.into_iter().peekable(),
+                base.clone(),
+                suffix
+            ) {
+                output.push(Control::Raw { subject });
+            } else {
+                output.push(Control::Text {
+                    value: inst_pos.get_source(source),
+                });
+            },
+            Instruction::IfStart(subject) => {
+                if let Some(subject) = generate_expression(
+                    &mut subject.into_iter().peekable(),
                     base.clone(),
                     suffix
                 ) {
-                    let (body, last) = second_pass(input.by_ref(), base.clone(), suffix);
+                    let (body, last) = parse_tree(source, input.by_ref(), base.clone(), suffix);
 
                     let alt = match last {
-                        MetaToken::Else { raw: _ } => {
-                            let (a, _) = second_pass(input.by_ref(), base.clone(), suffix);
+                        Some(InstructionPos { inst: Instruction::Else, .. }) => {
+                            let (a, _) = parse_tree(source, input.by_ref(), base.clone(), suffix);
                             a
                         },
                         _ => Vec::new(),
                     };
 
                     output.push(Control::If {
-                        neg,
-                        test,
+                        subject,
                         body,
                         alt,
                     });
                 } else {
                     output.push(Control::Text {
-                        source: raw
+                        value: inst_pos.get_source(source),
                     });
                 }
             },
-            MetaToken::IterStart { raw, subject } => {
+            Instruction::IterStart(subject) => {
                 if let Some(subject) = generate_expression(
                     &mut subject.into_iter().peekable(),
                     base.clone(),
                     suffix
                 ) {
-                    let path = match subject {
-                        Expression::PathExpression { ref path } => path.clone(),
+                    let path = match &subject {
+                        Expression::PathExpression { path } => path.clone(),
                         _ => Vec::new(),
                     };
 
-                    let (body, last) = second_pass(input.by_ref(), paths::iter_element(path.clone(), suffix), suffix + 1);
+                    let (body, last) = parse_tree(source, input.by_ref(), paths::iter_element(path.clone(), suffix), suffix + 1);
 
                     let alt = match last {
-                        MetaToken::Else { raw: _ } => {
-                            let (a, _) = second_pass(input.by_ref(), paths::iter_element(path.clone(), suffix), suffix + 1);
+                        Some(InstructionPos { inst: Instruction::Else, .. }) => {
+                            let (a, _) = parse_tree(source, input.by_ref(), paths::iter_element(path.clone(), suffix), suffix + 1);
                             a
                         },
                         _ => Vec::new(),
@@ -404,18 +340,16 @@ pub fn second_pass(
                     });
                 } else {
                     output.push(Control::Text {
-                        source: raw
+                        value: inst_pos.get_source(source),
                     });
                 }
             },
-            MetaToken::Else { raw: _ } | MetaToken::End { raw: _, subject: _ } => {
-                last = tok;
+            Instruction::Else | Instruction::End(_) => {
+                last = Some(inst_pos);
                 break;
             },
-            _ => (),
         }
     }
 
     (output, last)
 }
-
