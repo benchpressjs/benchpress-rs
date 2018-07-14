@@ -6,17 +6,15 @@ const { readFileSync, writeFileSync } = require('fs');
 const rustVersions = [
   'stable',
   'beta',
-  'nightly'
+  'nightly',
 ];
 
 const nodeVersions = [
   '6',
   '8',
   '9',
-  '10'
+  '10',
 ];
-
-const indent = (str, n) => str.split('\n').map(x => `${' '.repeat(4)}${x}`).join('\n');
 
 const testJobs = [];
 
@@ -35,9 +33,11 @@ ${testJobs.map(({ rustVersion, nodeVersion }) => `
       - rust_channel: ${rustVersion}
         nodejs_version: ${nodeVersion}
 `).join('')}
-`.replace('${NODE_VERSIONS}', buildJobs.map(({ nodeVersion }) => `
+`
+// eslint-disable-next-line no-template-curly-in-string
+  .replace('${NODE_VERSIONS}', buildJobs.map(({ nodeVersion }) => `
       - nodejs_version: ${nodeVersion}
-`.trimRight()).join(''));
+  `.trimRight()).join(''));
 
 const travis = `
 ${travisBase}
