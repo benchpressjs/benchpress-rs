@@ -37,8 +37,8 @@ fn go(input: String, debug: bool) {
     let pre_fixed = pre_fixer::pre_fix(input);
     let lexed = lexer::lex(&pre_fixed);
     let first_parsed = parser::parse_instructions(&pre_fixed, lexed.clone());
-    let extras_fixed = parser::fix_extra_tokens(&pre_fixed, first_parsed.clone());
-    let (tree, _) = parser::parse_tree(&pre_fixed, &mut extras_fixed.clone().into_iter(), Vec::new(), 1);
+    let extras_fixed = parser::fix_extra_instructions(&pre_fixed, first_parsed.clone());
+    let (tree, _) = parser::parse_tree(&pre_fixed, &mut extras_fixed.clone().into_iter(), &Vec::new(), 1);
 
     let code = generator::generate(tree.clone());
 

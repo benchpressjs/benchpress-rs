@@ -1,24 +1,24 @@
-pub fn iter_element(base: Vec<String>, suffix: u16) -> Vec<String> {
+/// append the iterator suffix
+pub fn iter_element(base: &Vec<String>, suffix: u16) -> Vec<String> {
     let mut new_path = base.clone();
-    let last_s = match new_path.pop() {
-        Some(last) => last.to_string(),
+    let last = match new_path.pop() {
+        Some(last) => last,
         None => String::new(),
     };
-    let last: &str = last_s.as_ref();
 
     new_path.push(String::from(format!("{}[{}]", last, suffix)));
 
     new_path
 }
 
-pub fn relative(base_path: Vec<String>, rel: Vec<String>) -> Vec<String> {
-    let mut base = base_path.clone();
-
-    if base.len() == 0 {
+/// resolve a relative path against a given base path
+pub fn relative(base_path: &Vec<String>, rel: Vec<String>) -> Vec<String> {
+    if base_path.len() == 0 {
         let mut output = rel.clone();
         output.retain(|f| !f.ends_with("./"));
         output
     } else {
+        let mut base = base_path.clone();
         let mut iter = rel.into_iter().peekable();
 
         match iter.peek().unwrap().as_ref() {
@@ -34,7 +34,7 @@ pub fn relative(base_path: Vec<String>, rel: Vec<String>) -> Vec<String> {
                     base.pop();
                 },
                 _ => {
-                    base.push(part);
+                    base.push(part.to_string());
                 },
             }
         }
@@ -43,6 +43,7 @@ pub fn relative(base_path: Vec<String>, rel: Vec<String>) -> Vec<String> {
     }
 }
 
+/// split a path string into a vector
 pub fn split(rel: String) -> Vec<String> {
     let mut iter = rel.chars();
     let mut prev = String::new();
@@ -80,14 +81,10 @@ pub fn split(rel: String) -> Vec<String> {
 }
 
 /// Resolve a full path from base path and relative path
-pub fn resolve(base: Vec<String>, rel: Vec<String>) -> Vec<String> {
-    if let Some(b_part) = rel.clone().get(0) {
-        if b_part.to_string().ends_with("./") {
+pub fn resolve(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
+    if let Some(b_part) = rel.get(0).map(|x| x.clone()) {
+        if b_part.ends_with("./") {
             return relative(base, rel);
-        }
-
-        if b_part.as_str() == "@value" {
-            return base;
         }
     }
 
@@ -113,12 +110,12 @@ pub fn resolve(base: Vec<String>, rel: Vec<String>) -> Vec<String> {
 
                 let b_part_fixed = if b_part.ends_with("]") {
                     match b_part.get(0..b_part.len() - 3) {
-                        Some(fixed) => fixed.to_string(),
-                        None => String::new(),
+                        Some(fixed) => fixed,
+                        None => b_part,
                     }
-                } else { b_part.clone() };
+                } else { b_part };
 
-                let r_part = rel[i].clone();
+                let r_part = &rel[i];
 
                 if b_part_fixed == r_part {
                     found = true;
@@ -145,7 +142,8 @@ pub fn resolve(base: Vec<String>, rel: Vec<String>) -> Vec<String> {
 
     if found {
         let mut output: Vec<String> = base[0..base_len].to_vec();
-        output.append(&mut rel.clone()[rel_start..].to_vec());
+        let mut rel_slice = rel[rel_start..].to_vec();
+        output.append(&mut rel_slice);
 
         output
     } else {
@@ -169,7 +167,7 @@ mod tests {
     #[test]
     fn rel_test() {
         assert_eq!(
-            relative(vec![], vec!["../".to_string(), "../".to_string(), "thing".to_string()]),
+            relative(&vec![], vec!["../".to_string(), "../".to_string(), "thing".to_string()]),
             vec!["thing".to_string()]
         );
     }

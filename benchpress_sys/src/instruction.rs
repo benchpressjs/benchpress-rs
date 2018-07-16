@@ -1,16 +1,19 @@
-use token::{TokenPos, Token};
+use token::{Token};
 
+/// template instructions
+/// `{stuff}`, `{{{each people}}}`, etc
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Instruction {
-    Text(String),
-    Escaped(Vec<Token>),
-    Raw(Vec<Token>),
-    IfStart(Vec<Token>),
-    IterStart(Vec<Token>),
-    Else,
-    End(Vec<Token>),
+    Text(String), // everything that not's an instruction
+    Escaped(Vec<Token>), // `{stuff}`
+    Raw(Vec<Token>), // `{{html}}`
+    IfStart(Vec<Token>), // `{{{if animal.carnivorous}}}`, `<!-- IF animal.carnivorous -->`
+    IterStart(Vec<Token>), // `{{{each people}}}`, `<!-- BEGIN peopl -->`
+    Else, // `{{{else}}}`, `<!-- ELSE -->`
+    End(Vec<Token>), // `{{{end}}}`, `<!-- END -->`, `<!-- ENDIF animal.carnivorous -->`
 }
 
+/// a wrapper for Instructions, containing source position information
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct InstructionPos {
     pub start: usize,
@@ -20,27 +23,11 @@ pub struct InstructionPos {
 }
 
 impl InstructionPos {
+    /// get the source string of this instruction
+    /// given the position information contained
+    /// and the original source string
     pub fn get_source(&self, source: &str) -> String {
         source[self.start..self.end].to_string()
-    }
-
-    pub fn to_text(&self, source: &str) -> InstructionPos {
-        InstructionPos {
-            start: self.start,
-            end: self.end,
-            inst: Instruction::Text(self.get_source(source)),
-        }
-    }
-
-    pub fn from_text(input: TokenPos) -> Option<InstructionPos> {
-        match input {
-            TokenPos { start, end, tok: Token::Text(text) } => Some(InstructionPos {
-                start,
-                end,
-                inst: Instruction::Text(text),
-            }),
-            _ => None,
-        }
     }
 }
 

@@ -71,7 +71,7 @@ impl<'a> StringSlicer<'a> {
         } else { false }
     }
 
-    /// step until current slice does not contain a space
+    /// step until current slice is not a single space
     fn skip_spaces(&mut self) {
         while self.slice() == Some(" ".to_string()) {
             self.step();
@@ -86,6 +86,8 @@ fn is_simple_char(ch: char) -> bool {
     }
 }
 
+/// lex an expression from the current slice position
+/// return an option of the token vector representing the expression
 fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     let mut output: Vec<TokenPos> = Vec::new();
 
@@ -98,25 +100,16 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                 let start = slicer.start;
                 slicer.step();
 
-                if slicer.slice() == Some("\"".to_string()) {
-                    slicer.step();
-
-                    return Some(vec![
-                        TokenPos {
-                            start,
-                            end: slicer.start,
-                            tok: Token::StringLiteral(String::new()),
-                        }
-                    ]);
-                }
-
-                while let Some(string_lit) = slicer.slice() {
-                    match slicer.suffix(1).map(|x| x.chars().nth(0).unwrap()) {
+                while let Some(mut string_lit) = slicer.slice() {
+                    match string_lit.chars().last() {
                         // grow to include backslash and escaped char
                         Some('\\') => slicer.grow_by(2),
                         // finish the string
                         Some('"') => {
-                            slicer.step_by(2);
+                            // skip last character
+                            string_lit.pop();
+
+                            slicer.step();
                             return Some(vec![
                                 TokenPos {
                                     start,
@@ -126,7 +119,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                             ]);
                         },
                         Some(_) => slicer.grow(),
-                        None => { return None; },
+                        None => return None,
                     }
                 }
             },
@@ -144,100 +137,102 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                 } else { return None; }
             },
             // identifier or helper
-            _ => {
-                if slice.chars().all(|ch| ch != '-' && is_simple_char(ch)) {
-                    while let Some(_) = slicer.slice() {
-                        if let Some(suffix) = slicer.suffix(1) {
-                            if is_simple_char(suffix.chars().nth(0).unwrap()) {
-                                slicer.grow();
-                            } else { break; }
+            _ => if slice.chars().all(|ch| ch != '-' && is_simple_char(ch)) {
+                // collect simple chars for identifier
+                while let Some(_) = slicer.slice() {
+                    if let Some(suffix) = slicer.suffix(1) {
+                        if is_simple_char(suffix.chars().nth(0).unwrap()) {
+                            slicer.grow();
                         } else { break; }
-                    }
+                    } else { break; }
+                }
 
-                    if let Some(sub_slice) = slicer.slice() {
-                        // legacy helper call
-                        if sub_slice.starts_with("function.") {
-                            let helper_name = sub_slice[9..].to_string();
+                if let Some(sub_slice) = slicer.slice() {
+                    // legacy helper call
+                    if sub_slice.starts_with("function.") {
+                        let helper_name = sub_slice[9..].to_string();
+                        output.push(TokenPos {
+                            start: slicer.start,
+                            end: slicer.start + 9,
+                            tok: Token::LegacyHelper,
+                        });
+                        output.push(TokenPos {
+                            start: slicer.start + 9,
+                            end: slicer.end,
+                            tok: Token::Identifier(helper_name),
+                        });
+
+                        slicer.step();
+                        slicer.skip_spaces();
+
+                        // get arguments
+                        while slicer.slice() == Some(",".to_string()) {
                             output.push(TokenPos {
                                 start: slicer.start,
-                                end: slicer.start + 9,
-                                tok: Token::LegacyHelper,
-                            });
-                            output.push(TokenPos {
-                                start: slicer.start + 9,
                                 end: slicer.end,
-                                tok: Token::Identifier(helper_name),
+                                tok: Token::Comma,
+                            });
+                            slicer.step();
+                            
+                            if let Some(mut arg) = lex_expression(slicer) {
+                                output.append(&mut arg);
+                            }
+                            // allow a trailing comma
+
+                            slicer.skip_spaces();
+                        }
+                    } else {
+                        let name = sub_slice.to_string();
+                        output.push(TokenPos {
+                            start: slicer.start,
+                            end: slicer.end,
+                            tok: Token::Identifier(name),
+                        });
+
+                        slicer.step();
+                        slicer.skip_spaces();
+
+                        // helper call
+                        if slicer.slice() == Some("(".to_string()) {
+                            output.push(TokenPos {
+                                start: slicer.start,
+                                end: slicer.end,
+                                tok: Token::LeftParen,
                             });
 
-                            slicer.step();
-                            slicer.skip_spaces();
-
-                            while slicer.slice() == Some(",".to_string()) {
-                                output.push(TokenPos {
-                                    start: slicer.start,
-                                    end: slicer.end,
-                                    tok: Token::Comma,
-                                });
+                            // get arguments
+                            while {
                                 slicer.step();
-                                
+
                                 if let Some(mut arg) = lex_expression(slicer) {
                                     output.append(&mut arg);
                                 }
                                 // allow a trailing comma
 
                                 slicer.skip_spaces();
-                            }
-                        } else {
-                            let name = sub_slice.to_string();
-                            output.push(TokenPos {
-                                start: slicer.start,
-                                end: slicer.end,
-                                tok: Token::Identifier(name),
-                            });
 
-                            slicer.step();
-                            slicer.skip_spaces();
-
-                            if slicer.slice() == Some("(".to_string()) {
-                                output.push(TokenPos {
-                                    start: slicer.start,
-                                    end: slicer.end,
-                                    tok: Token::LeftParen,
-                                });
-
-                                while {
-                                    slicer.step();
-
-                                    if let Some(mut arg) = lex_expression(slicer) {
-                                        output.append(&mut arg);
-                                    }
-                                    // allow a trailing comma
-
-                                    slicer.skip_spaces();
-
-                                    if slicer.slice() == Some(",".to_string()) {
-                                        output.push(TokenPos {
-                                            start: slicer.start,
-                                            end: slicer.end,
-                                            tok: Token::Comma,
-                                        });
-                                        true
-                                    } else { false }
-                                } {}
-
-                                if slicer.slice() == Some(")".to_string()) {
+                                if slicer.slice() == Some(",".to_string()) {
                                     output.push(TokenPos {
                                         start: slicer.start,
                                         end: slicer.end,
-                                        tok: Token::RightParen,
+                                        tok: Token::Comma,
                                     });
-                                    slicer.step();
-                                } else { return None; }
-                            }
+                                    true
+                                } else { false }
+                            } {}
+
+                            if slicer.slice() == Some(")".to_string()) {
+                                output.push(TokenPos {
+                                    start: slicer.start,
+                                    end: slicer.end,
+                                    tok: Token::RightParen,
+                                });
+                                slicer.step();
+                            } else { return None; }
                         }
-                    } else { return None; }
+                    }
                 } else { return None; }
-            },
+            } else { return None; },
         }
     }
 
@@ -246,6 +241,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     Some(output)
 }
 
+/// lex a block (`if expr`, `each expr`, `else`, `end`)
 fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     let mut output: Vec<TokenPos> = Vec::new();
 
@@ -334,6 +330,7 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     Some(output)
 }
 
+/// lex the input string into Tokens
 pub fn lex(input: &str) -> Vec<TokenPos> {
     let mut output: Vec<TokenPos> = vec![];
     let length = input.len();
@@ -468,6 +465,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
             },
             // text
             _ => {
+                // start of an instruction
                 if slicer.followed_by("\\") || slicer.followed_by("{") || slicer.followed_by("<!--") {
                     output.push(TokenPos {
                         start: slicer.start,
@@ -481,6 +479,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
             }
         }
 
+        // add the last piece of text
         if slicer.end >= length {
             slicer.end = length;
             if let Some(text) = slicer.slice() {
