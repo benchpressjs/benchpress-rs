@@ -9,7 +9,7 @@ fn fix_iter(input: String, first: bool) -> String {
         static ref LEGACY_ITER_PATTERN: onig::Regex = onig::Regex::new(r"<!-- BEGIN ([^./][@a-zA-Z0-9/.\-_:]+?) -->([\s\S]*?)<!-- END \1 -->").unwrap();
     }
     
-    LEGACY_ITER_PATTERN.replace_all(input.as_ref(), |caps: &onig::Captures| {
+    LEGACY_ITER_PATTERN.replace_all(input.as_str(), |caps: &onig::Captures| {
         let subject = caps.at(1).unwrap_or("");
         let body = fix_iter(caps.at(2).unwrap_or("").to_string(), false);
 
@@ -52,11 +52,11 @@ fn combined(input: String) -> String {
         ").unwrap();
     }
 
-    COMBINED.replace_all(input.as_ref(), |caps: &Captures| {
+    COMBINED.replace_all(&input, |caps: &Captures| {
         if let Some(_) = caps.name("if_helpers") {
             // add root data to legacy if helpers
-            let name = String::from(&caps["if_helpers_name"]);
-            let args = String::from(&caps["if_helpers_args"]);
+            let name = &caps["if_helpers_name"].to_string();
+            let args = &caps["if_helpers_args"].to_string();
 
             if args.len() > 0 {
                 format!("<!-- IF function.{}, @root, {} -->", name, args)
@@ -65,17 +65,17 @@ fn combined(input: String) -> String {
             }
         } else if let Some(_) = caps.name("loop_helpers") {
             // add value context for in-loop helpers
-            let name = String::from(&caps["loop_helpers_name"]);
+            let name = &caps["loop_helpers_name"].to_string();
             format!("{{function.{}, @value}}", name)
         } else if let Some(_) = caps.name("outside_tokens") {
             // wrap `@key`, `@value`, `@index` in mustaches
             // if they aren't in a mustache already
-            let orig = String::from(&caps[0]);
+            let orig = &caps[0];
             
             if let Some(lone) = caps.name("outside_tokens_lone") {
                 format!("{{{}}}", lone.as_str())
             } else {
-                orig
+                orig.to_string()
             }
         } else {
             String::new()

@@ -19,7 +19,7 @@ fn tree_tostring(tree: Vec<Control>) -> String {
                 suffix, subject_raw, subject, tree_tostring(body), tree_tostring(alt)
             ),
             _ => format!("{:?},", elem),
-        }.as_ref());
+        }.as_str());
 
         output.push('\n');
     }
@@ -29,7 +29,7 @@ fn tree_tostring(tree: Vec<Control>) -> String {
     if output.len() > 0 {
         format!("[\n{}\n]", output)
     } else {
-        String::from("[]")
+        "[]".to_string()
     }
 }
 
@@ -46,12 +46,9 @@ fn go(input: String, debug: bool) {
         println!("/*");
 
         println!("pre fixed   \n-------------\n{}\n\n", pre_fixed);
-        let lexed_fixed = format!("{:?}", lexed);
-        println!("lexed       \n-------------\n{}\n\n", lexed_fixed);
-        let first_parsed_fixed = format!("{:?}", first_parsed);
-        println!("first parsed\n-------------\n{}\n\n", first_parsed_fixed);
-        let extras_fixed_fixed = format!("{:?}", extras_fixed);
-        println!("extras fixed\n-------------\n{}\n\n", extras_fixed_fixed);
+        println!("lexed       \n-------------\n{:?}\n\n", lexed);
+        println!("first parsed\n-------------\n{:?}\n\n", first_parsed);
+        println!("extras fixed\n-------------\n{:?}\n\n", extras_fixed);
         println!("parse tree  \n-------------\n{}\n\n", tree_tostring(tree));
 
         println!("code        \n-------------*/");
@@ -60,29 +57,30 @@ fn go(input: String, debug: bool) {
     println!("{}", code);
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     // println!("Hello, world!");
 
     let stdin = io::stdin();
 
-    let mut args = std::env::args();
     let debug = std::env::args().any(|x| x == "--debug");
 
-    if args.any(|x| x == "-") {
+    if std::env::args().any(|x| x == "-") {
         let mut passed = String::new();
-        stdin.lock().read_to_string(&mut passed).expect("Failed to read stdin");
+        stdin.lock().read_to_string(&mut passed)?;
 
         go(passed, debug);
     } else {
         loop {
             // Stdout needs to be flushed, due to missing newline
             print!(">> ");
-            io::stdout().flush().expect("Error flushing stdout");
+            io::stdout().flush()?;
 
             let mut line = String::new();
-            stdin.lock().read_line(&mut line).expect("Error reading from stdin");
+            stdin.lock().read_line(&mut line)?;
             
             go(line, debug);
         }
     }
+
+    Ok(())
 }

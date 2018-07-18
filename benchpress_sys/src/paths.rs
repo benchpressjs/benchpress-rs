@@ -6,7 +6,7 @@ pub fn iter_element(base: &Vec<String>, suffix: u16) -> Vec<String> {
         None => String::new(),
     };
 
-    new_path.push(String::from(format!("{}[{}]", last, suffix)));
+    new_path.push(format!("{}[{}]", last, suffix));
 
     new_path
 }
@@ -21,7 +21,7 @@ pub fn relative(base_path: &Vec<String>, rel: Vec<String>) -> Vec<String> {
         let mut base = base_path.clone();
         let mut iter = rel.into_iter().peekable();
 
-        match iter.peek().unwrap().as_ref() {
+        match iter.peek().unwrap().as_str() {
             "../" | "./" => {
                 iter.next();
             },
@@ -29,7 +29,7 @@ pub fn relative(base_path: &Vec<String>, rel: Vec<String>) -> Vec<String> {
         }
 
         while let Some(part) = iter.next() {
-            match part.as_ref() {
+            match part.as_str() {
                 "../" => {
                     base.pop();
                 },
@@ -51,7 +51,7 @@ pub fn split(rel: String) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
 
     while let Some(cur) = iter.next() {
-        match (prev.as_ref(), cur) {
+        match (prev.as_str(), cur) {
             (".", '.') => {
                 prev.push(cur);
             },

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 /// recursively applied to If and Iter children
 fn gen_body(entry: Vec<Control>, top: bool, mut block_names: &mut HashSet<String>) -> (String, Vec<String>) {
     if entry.len() == 0 {
-        return (String::from("\"\""), Vec::new())
+        return ("\"\"".to_string(), Vec::new())
     }
 
     let mut blocks: Vec<String> = Vec::new();

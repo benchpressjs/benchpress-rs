@@ -34,7 +34,7 @@ lazy_static! {
 /// indent each line (except the first) by a given number of spaces
 pub fn indent(source: String, amount: usize) -> String {
     let joiner = format!("\n{}", " ".repeat(amount));
-    source.lines().collect::<Vec<&str>>().join(joiner.as_ref())
+    source.lines().collect::<Vec<&str>>().join(&joiner)
 }
 
 /// block method template
@@ -146,7 +146,7 @@ pub fn escape_path(input: &String) -> String {
 
 /// create guarded chained property access
 pub fn guard(input: Vec<String>) -> String {
-    let mut exp = String::from(CONTEXT);
+    let mut exp = CONTEXT.to_string();
     let mut last = exp.clone();
 
     for part in input {
@@ -169,16 +169,16 @@ pub fn guard(input: Vec<String>) -> String {
 
         last = format!("{}['{}']", last, escape_path(&part_fixed));
         exp.push_str(" && ");
-        exp.push_str(last.as_ref());
+        exp.push_str(&last);
 
         if let Some(n) = index {
             last = format!("{}[key{}]", last, n);
             exp.push_str(" && ");
-            exp.push_str(last.as_ref());
+            exp.push_str(&last);
         }
     }
 
-    format!("guard({})", exp)
+    format!("{}({})", GUARD, exp)
 }
 
 /// create JS code for a given expression
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn block_test() {
-        assert_eq!(block(&String::from("metaTags"), String::from("'every' +\n' meta tag'")), 
+        assert_eq!(block(&"metaTags".to_string(), "'every' +\n' meta tag'".to_string()), 
 "'metaTags': function metaTags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
   return 'every' +
@@ -241,7 +241,7 @@ mod tests {
 }"
         );
 
-        assert_eq!(block(&String::from("meta.tags"), String::from("'every meta tag'")), 
+        assert_eq!(block(&"meta.tags".to_string(), "'every meta tag'".to_string()), 
 "'meta.tags': function metatags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
   return 'every meta tag';
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn wrapper_test() {
-        assert_eq!(wrapper(String::from("'stuff'"), vec![]), 
+        assert_eq!(wrapper("'stuff'".to_string(), vec![]), 
 "
 (function (factory) {
   if (typeof module === 'object' && module.exports) {
@@ -275,10 +275,10 @@ mod tests {
         );
 
         assert_eq!(wrapper(
-            String::from("'stuff'"), 
+            "'stuff'".to_string(),
             vec![
-                String::from("one"),
-                String::from("two\nthree")
+                "one".to_string(),
+                "two\nthree".to_string(),
             ]
         ),
 "
@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn expression_test() {
         assert_eq!(expression(Expression::StringLiteral { 
-            value: String::from("stuff\\n \\\"about\\\" things") 
+            value: "stuff\\n \\\"about\\\" things".to_string()
         }), "\"stuff\\n \\\"about\\\" things\"".to_string());
 
         assert_eq!(expression(Expression::PathExpression {

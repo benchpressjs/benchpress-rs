@@ -5,17 +5,22 @@ use token::{ Token, TokenPos };
 #[derive(Debug, Clone)]
 struct StringSlicer<'a> {
     source: &'a str,
+    len: usize,
     start: usize,
     end: usize,
 }
 
 impl<'a> StringSlicer<'a> {
     fn new(input: &'a str) -> StringSlicer<'a> {
-        StringSlicer {
+        let mut out = StringSlicer {
             source: input,
+            len: input.len(),
             start: 0,
-            end: 1,
-        }
+            end: 0,
+        };
+        out.reset();
+
+        out
     }
 
     /// get current slice
@@ -26,6 +31,9 @@ impl<'a> StringSlicer<'a> {
     /// reset slice to length of 1
     fn reset(&mut self) {
         self.end = self.start + 1;
+        while !self.source.is_char_boundary(self.end) && self.end < self.len {
+            self.end += 1;
+        }
     }
 
     /// move the beginning right one, reset length to 1
@@ -36,18 +44,23 @@ impl<'a> StringSlicer<'a> {
 
     /// step by `inc` units
     fn step_by(&mut self, inc: usize) {
-        self.start = self.end + inc - 1;
-        self.reset();
+        self.grow_by(inc - 1);
+        self.step();
     }
     
     /// increment right end of slice, keeping the beginning in place
     fn grow(&mut self) {
-        self.end += 1;
+        while {
+            self.end += 1;
+            !self.source.is_char_boundary(self.end) && self.end < self.len
+        } {}
     }
 
     /// grow by `inc` units
     fn grow_by(&mut self, inc: usize) {
-        self.end += inc;
+        for _ in 0..inc {
+            self.grow();
+        }
     }
 
     /// get substr preceeding slice
@@ -94,7 +107,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     slicer.skip_spaces();
 
     if let Some(slice) = slicer.slice() {
-        match slice.as_ref() {
+        match slice.as_str() {
             // string literals
             "\"" => {
                 let start = slicer.start;
@@ -249,7 +262,7 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
     slicer.grow_by(2);
 
     if let Some(slice) = slicer.slice() {
-        match slice.as_ref() {
+        match slice.as_str() {
             // if tokens
             "if " | "IF " => {
                 output.push(TokenPos {
@@ -265,7 +278,7 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                 } else { return None; }
             },
             // iterator tokens
-            "eac" | "BEG" => if match slice.as_ref() {
+            "eac" | "BEG" => if match slice.as_str() {
                 "eac" => if slicer.followed_by("h ") {
                     slicer.grow();
                     true
@@ -308,7 +321,7 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                 // end subject is optional
             },
             // else tokens
-            "els" | "ELS" => if match slice.as_ref() {
+            "els" | "ELS" => if match slice.as_str() {
                 "els" => slicer.followed_by("e"),
                 // "ELS"
                 _ => slicer.followed_by("E"),
@@ -333,11 +346,11 @@ fn lex_block(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
 /// lex the input string into Tokens
 pub fn lex(input: &str) -> Vec<TokenPos> {
     let mut output: Vec<TokenPos> = vec![];
-    let length = input.len();
     let mut slicer = StringSlicer::new(input);
+    let length = slicer.len;
 
     while let Some(slice) = slicer.slice() {
-        match slice.as_ref() {
+        match slice.as_str() {
             // escaped opens
             "\\" => {
                 if let Some(target) = ["<!--", "{{{", "{{", "{"].iter().find(|x| slicer.followed_by(x)) {
@@ -365,7 +378,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
                 copy.step();
 
                 let valid = if let Some(mut tokens) = lex_expression(&mut copy) {
-                    let closer = match slice.as_ref() {
+                    let closer = match slice.as_str() {
                         "{" => "}",
                         // "{{"
                         _ => {
@@ -375,7 +388,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
                     }.to_string();
 
                     if copy.slice() == Some(closer) {
-                        let (open_token, close_token) = match slice.as_ref() {
+                        let (open_token, close_token) = match slice.as_str() {
                             "{" => (TokenPos {
                                 start,
                                 end: orig_end,
@@ -427,7 +440,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
                 let valid = if let Some(mut tokens) = lex_block(&mut copy) {
                     let closer_len = 3;
                     
-                    let closer = match slice.as_ref() {
+                    let closer = match slice.as_str() {
                         "<!--" => "-->",
                         // "{{{"
                         _ => "}}}",
@@ -748,6 +761,28 @@ mod tests {
                 Token::End,
                 Token::Identifier("foo.bar".to_string()),
             ]
+        );
+    }
+
+    // test that the lexer can handle unicode inputs
+    static UNICODE_START: u16 = 0x0020;
+    static UNICODE_END: u16 = 0x26FF;
+
+    #[test]
+    fn unicode() {
+        let mut text = String::new();
+
+        for i in UNICODE_START..UNICODE_END {
+            if let Ok(ch) = String::from_utf16(&[i]) {
+                text.push_str(&ch);
+            } else {
+                assert!(false)
+            }
+        }
+
+        assert_eq!(
+            lex(&text)[0].tok,
+            Token::Text(text)
         );
     }
 }
