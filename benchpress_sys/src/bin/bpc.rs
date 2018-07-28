@@ -4,6 +4,7 @@ use benchpress_sys::{parser, pre_fixer, lexer, generator};
 use parser::Control;
 
 use std::io::{self, BufRead, Write, Read};
+use std::fs::File;
 
 fn tree_tostring(tree: Vec<Control>) -> String {
     let mut output = String::new();
@@ -69,6 +70,12 @@ fn main() -> io::Result<()> {
         stdin.lock().read_to_string(&mut passed)?;
 
         go(passed, debug);
+    } else if let Some(filepath) = { let mut args = std::env::args(); if args.any(|x| x == "-i") { args.next() } else { None } } {
+        let mut file = File::open(filepath)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+
+        go(contents, debug);
     } else {
         loop {
             // Stdout needs to be flushed, due to missing newline

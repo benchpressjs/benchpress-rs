@@ -4,8 +4,8 @@ use instruction::{Instruction, InstructionPos};
 use std::iter::{Iterator, Peekable};
 use itertools::Itertools;
 
-/// parse the lexer output (like `{{each people}}` and `{stuff}`)
-/// into instructions
+/// parse the lexer output
+/// into instructions (like `{{each people}}` and `{stuff}`)
 pub fn parse_instructions(_source: &str, tokens: Vec<TokenPos>) -> Vec<InstructionPos> {
     let mut output: Vec<InstructionPos> = vec![];
 

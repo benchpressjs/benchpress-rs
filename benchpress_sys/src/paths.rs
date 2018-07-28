@@ -12,13 +12,14 @@ pub fn iter_element(base: &Vec<String>, suffix: u16) -> Vec<String> {
 }
 
 /// resolve a relative path against a given base path
-pub fn relative(base_path: &Vec<String>, rel: Vec<String>) -> Vec<String> {
-    if base_path.len() == 0 {
+pub fn relative(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
+    if base.len() == 0 {
         let mut output = rel.clone();
         output.retain(|f| !f.ends_with("./"));
+
         output
     } else {
-        let mut base = base_path.clone();
+        let mut output = base.clone();
         let mut iter = rel.into_iter().peekable();
 
         match iter.peek().unwrap().as_str() {
@@ -31,15 +32,15 @@ pub fn relative(base_path: &Vec<String>, rel: Vec<String>) -> Vec<String> {
         while let Some(part) = iter.next() {
             match part.as_str() {
                 "../" => {
-                    base.pop();
+                    output.pop();
                 },
                 _ => {
-                    base.push(part.to_string());
+                    output.push(part.to_string());
                 },
             }
         }
 
-        base
+        output
     }
 }
 
@@ -82,10 +83,8 @@ pub fn split(rel: String) -> Vec<String> {
 
 /// Resolve a full path from base path and relative path
 pub fn resolve(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
-    if let Some(b_part) = rel.get(0).map(|x| x.clone()) {
-        if b_part.ends_with("./") {
-            return relative(base, rel);
-        }
+    if let Some(true) = rel.get(0).map(|part| part.ends_with("./")) {
+        return relative(base, rel);
     }
 
     // otherwise we have to figure out if this is something like
@@ -94,7 +93,7 @@ pub fn resolve(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
     // or if it's an absolute path
     let mut found = false;
     let mut rel_start = 0;
-    let mut base_len = 0;
+    let mut base_end = 0;
 
     for l in (1..(rel.len() + 1)).rev() {
         // slide through array from end to start until a match is found
@@ -122,7 +121,7 @@ pub fn resolve(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
 
                     if i == l - 1 {
                         rel_start = l;
-                        base_len = j + l;
+                        base_end = j + l;
                     }
                 } else {
                     found = false;
@@ -141,7 +140,7 @@ pub fn resolve(base: &Vec<String>, rel: Vec<String>) -> Vec<String> {
     }
 
     if found {
-        let mut output: Vec<String> = base[0..base_len].to_vec();
+        let mut output: Vec<String> = base[0..base_end].to_vec();
         let mut rel_slice = rel[rel_start..].to_vec();
         output.append(&mut rel_slice);
 

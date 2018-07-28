@@ -48,11 +48,13 @@ pub fn block(name: &String, body: String) -> String {
 "
 '{}': function {}({}) {{
   var {} = {}.{};
+  var {} = {};
   return {};
 }}
 ",
         escape_path(name), safe_name, RUNTIME_PARAMS.to_string(),
         ESCAPE, HELPERS, ESCAPE,
+        VALUE, CONTEXT,
         indent(body, 2)
     ).trim().to_string()
 }
@@ -77,6 +79,7 @@ pub fn wrapper(body: String, blocks: Vec<String>) -> String {
 }})(function () {{
   function compiled({}) {{
     var {} = {}.{};
+    var {} = {};
     return {};
   }}
 
@@ -89,6 +92,7 @@ pub fn wrapper(body: String, blocks: Vec<String>) -> String {
 ", 
         RUNTIME_PARAMS.to_string(),
         ESCAPE, HELPERS, ESCAPE,
+        VALUE, CONTEXT,
         indent(body, 6),
         BLOCKS, 
         blocks_str
@@ -236,6 +240,7 @@ mod tests {
         assert_eq!(block(&"metaTags".to_string(), "'every' +\n' meta tag'".to_string()), 
 "'metaTags': function metaTags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
+  var value = context;
   return 'every' +
   ' meta tag';
 }"
@@ -244,6 +249,7 @@ mod tests {
         assert_eq!(block(&"meta.tags".to_string(), "'every meta tag'".to_string()), 
 "'meta.tags': function metatags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
+  var value = context;
   return 'every meta tag';
 }"
         );
@@ -262,6 +268,7 @@ mod tests {
 })(function () {
   function compiled(helpers, context, guard, iter, helper) {
     var __escape = helpers.__escape;
+    var value = context;
     return 'stuff';
   }
 
@@ -291,6 +298,7 @@ mod tests {
 })(function () {
   function compiled(helpers, context, guard, iter, helper) {
     var __escape = helpers.__escape;
+    var value = context;
     return 'stuff';
   }
 
