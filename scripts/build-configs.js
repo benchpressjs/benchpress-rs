@@ -52,7 +52,6 @@ ${buildJobs.map(({ nodeVersion }) => `
     - stage: build binaries
       rust: stable
       env: TRAVIS_NODE_VER=${nodeVersion}
-      before_script: source ./scripts/ci/vars.sh
       after_success: source ./scripts/ci/add-binary.sh
 `).join('')}
 `;

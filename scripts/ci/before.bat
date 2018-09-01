@@ -7,3 +7,6 @@ IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
   REM get base branch 'master_builds' to 'master'
   set base_branch=%APPVEYOR_REPO_BRANCH:_builds=%
 )
+
+rustup install %CLIPPY_TOOLCHAIN%
+rustup component add clippy-preview --toolchain=%CLIPPY_TOOLCHAIN%

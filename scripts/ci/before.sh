@@ -11,3 +11,6 @@ if [[ "$TRAVIS_COMMIT_MESSAGE" = *"[publish binary]"* ]]; then
   # get base branch master_builds->master
   BASE_BRANCH="${TRAVIS_BRANCH%_builds}"
 fi
+
+rustup install $CLIPPY_TOOLCHAIN
+rustup component add clippy-preview --toolchain=$CLIPPY_TOOLCHAIN

@@ -32,17 +32,17 @@ lazy_static! {
 }
 
 /// indent each line (except the first) by a given number of spaces
-pub fn indent(source: String, amount: usize) -> String {
+pub fn indent(source: &str, amount: usize) -> String {
     let joiner = format!("\n{}", " ".repeat(amount));
     source.lines().collect::<Vec<&str>>().join(&joiner)
 }
 
 /// block method template
-pub fn block(name: &String, body: String) -> String {
+pub fn block(name: &str, body: &str) -> String {
     let mut first = true;
     let safe_name: String = name.chars().filter(|&x| {
         x.is_alphabetic() || x == '_' || if first { first = false; false } else { x.is_numeric() }
-    }).collect::<String>();
+    }).collect();
 
     format!(
 "
@@ -60,13 +60,13 @@ pub fn block(name: &String, body: String) -> String {
 }
 
 /// block call template
-pub fn block_call(name: &String) -> String {
+pub fn block_call(name: &str) -> String {
     format!("{}['{}']({})", BLOCKS, escape_path(name), RUNTIME_PARAMS.to_string())
 }
 
 /// module wrapper template
-pub fn wrapper(body: String, blocks: Vec<String>) -> String {
-    let blocks_str = indent(blocks.join(",\n"), 4);
+pub fn wrapper(body: &str, blocks: &[String]) -> String {
+    let blocks_str = indent(&blocks.join(",\n"), 4);
 
     format!(
 "
@@ -101,7 +101,7 @@ pub fn wrapper(body: String, blocks: Vec<String>) -> String {
 
 /// if-else template
 /// `neg` switches body and alt
-pub fn if_else(neg: bool, subject: String, body: String, alt: String) -> String {
+pub fn if_else(neg: bool, subject: &str, body: &str, alt: &str) -> String {
     // switch body/alt position if neg
     let (first, second) = if neg { (alt, body) } else { (body, alt) };
 
@@ -114,7 +114,7 @@ pub fn if_else(neg: bool, subject: String, body: String, alt: String) -> String 
 }
 
 /// iter template
-pub fn iter(suffix: u16, subject: String, body: String, alt: String) -> String {
+pub fn iter(suffix: u16, subject: &str, body: &str, alt: &str) -> String {
     let key = key_i(suffix);
     
     format!(
@@ -132,14 +132,14 @@ pub fn iter(suffix: u16, subject: String, body: String, alt: String) -> String {
 }
 
 /// create a string concatenation in JS
-pub fn concat(input: Vec<String>) -> String {
+pub fn concat(input: &[String]) -> String {
     input.join(" + \n")
 }
 
 use parser::Expression;
 
 /// escape path 
-pub fn escape_path(input: &String) -> String {
+pub fn escape_path(input: &str) -> String {
     input.chars().map(|x| match x {
         '"' => "\\\"".to_string(),
         '\'' => "\\\'".to_string(),
@@ -155,7 +155,7 @@ pub fn guard(input: Vec<String>) -> String {
 
     for part in input {
         // handle indices like item[1]
-        let (part_fixed, index) = if part.ends_with("]") && part.len() > 3 {
+        let (part_fixed, index) = if part.ends_with(']') && part.len() > 3 {
             let n: usize = part.len() - 2;
             let index: Option<char> = match part.chars().nth(n) {
                 Some(ch) => if ch.is_numeric() {
@@ -192,7 +192,7 @@ pub fn expression(input: Expression) -> String {
             format!("\"{}\"", value)
         },
         Expression::PathExpression { path } => {
-            if let Some(part) = path.get(0).map(|x| x.clone()) {
+            if let Some(part) = path.get(0).cloned() {
                 match part.as_str() {
                     "@root" => CONTEXT.to_string(),
                     "@key" => KEY.to_string(),
@@ -207,7 +207,7 @@ pub fn expression(input: Expression) -> String {
             }
         },
         Expression::HelperExpression { helper_name, args } => {
-            let args_str = args.into_iter().map(|x| expression(x)).collect::<Vec<String>>().join(", ");
+            let args_str = args.into_iter().map(expression).collect::<Vec<String>>().join(", ");
 
             format!(
                 "{}({}, {}, '{}', [{}])",
@@ -226,18 +226,18 @@ mod tests {
 
     #[test]
     fn key_length_i() {
-        assert_eq!(key_i(3), "key3".to_string());
-        assert_eq!(length_i(3), "length3".to_string());
+        assert_eq!(key_i(3), "key3");
+        assert_eq!(length_i(3), "length3");
     }
 
     #[test]
     fn indent_test() {
-        assert_eq!(indent("a\nb\nc".to_string(), 2), "a\n  b\n  c".to_string());
+        assert_eq!(indent("a\nb\nc", 2), "a\n  b\n  c");
     }
 
     #[test]
     fn block_test() {
-        assert_eq!(block(&"metaTags".to_string(), "'every' +\n' meta tag'".to_string()), 
+        assert_eq!(block("metaTags", "'every' +\n' meta tag'"), 
 "'metaTags': function metaTags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
   var value = context;
@@ -246,7 +246,7 @@ mod tests {
 }"
         );
 
-        assert_eq!(block(&"meta.tags".to_string(), "'every meta tag'".to_string()), 
+        assert_eq!(block("meta.tags", "'every meta tag'"), 
 "'meta.tags': function metatags(helpers, context, guard, iter, helper) {
   var __escape = helpers.__escape;
   var value = context;
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn wrapper_test() {
-        assert_eq!(wrapper("'stuff'".to_string(), vec![]), 
+        assert_eq!(wrapper("'stuff'", &[]), 
 "
 (function (factory) {
   if (typeof module === 'object' && module.exports) {
@@ -282,8 +282,8 @@ mod tests {
         );
 
         assert_eq!(wrapper(
-            "'stuff'".to_string(),
-            vec![
+            "'stuff'",
+            &[
                 "one".to_string(),
                 "two\nthree".to_string(),
             ]
@@ -318,9 +318,9 @@ mod tests {
     fn if_else_test() {
         assert_eq!(if_else(
             false, 
-            "thing".to_string(), 
-            "'body' +\n' content'".to_string(),
-            "'alt content'".to_string()
+            "thing", 
+            "'body' +\n' content'",
+            "'alt content'"
         ),
 "(thing ?
   'body' +
@@ -330,9 +330,9 @@ mod tests {
 
         assert_eq!(if_else(
             true, 
-            "false_thing".to_string(), 
-            "'body content'".to_string(),
-            "'alt content'".to_string()
+            "false_thing", 
+            "'body content'",
+            "'alt content'"
         ),
 "(false_thing ?
   'alt content' :
@@ -344,9 +344,9 @@ mod tests {
     fn iter_test() {
         assert_eq!(iter(
             9, 
-            "stuff".to_string(), 
-            "'for ' + \n'each one'".to_string(), 
-            "'if ' + \n'none'".to_string()
+            "stuff", 
+            "'for ' + \n'each one'", 
+            "'if ' + \n'none'"
         ),
 "iter(stuff, function each(key9, index, length, value) {
   var key = key9;

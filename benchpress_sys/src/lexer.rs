@@ -73,7 +73,7 @@ impl<'a> StringSlicer<'a> {
 
     /// see character directly following slice
     fn suffix(&self) -> Option<char> {
-        match self.source.get(self.end..(self.end + 1)).map(|x| x.chars().next()) {
+        match self.source.get(self.end..=self.end).map(|x| x.chars().next()) {
             Some(Some(ch)) => Some(ch),
             _ => None,
         }
@@ -156,7 +156,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
         // identifier or helper
         _ => if slice.chars().all(|ch| ch != '-' && is_simple_char(ch)) {
             // collect simple chars for identifier
-            while slicer.slice().len() > 0 {
+            while !slicer.slice().is_empty() {
                 if let Some(suffix) = slicer.suffix() {
                     if is_simple_char(suffix) {
                         slicer.grow();
@@ -533,7 +533,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
         },
         (prev, current) => {
             if if let TokenPos { tok: Token::Text(val), .. } = &prev {
-                val.len() > 0
+                !val.is_empty()
             } else { true } {
                 collapsed.push(prev);
             }
@@ -543,7 +543,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
     });
 
     if if let TokenPos { tok: Token::Text(val), .. } = &last {
-        val.len() > 0
+        !val.is_empty()
     } else { true } {
         collapsed.push(last);
     }

@@ -7,7 +7,7 @@ use std::collections::HashSet;
 /// generate code for a body
 /// recursively applied to If and Iter children
 fn gen_body(entry: Vec<Control>, top: bool, mut block_names: &mut HashSet<String>) -> (String, Vec<String>) {
-    if entry.len() == 0 {
+    if entry.is_empty() {
         return ("\"\"".to_string(), Vec::new())
     }
 
@@ -33,24 +33,24 @@ fn gen_body(entry: Vec<Control>, top: bool, mut block_names: &mut HashSet<String
 
             templates::if_else(
                 neg,
-                templates::expression(expr),
-                b,
-                a
+                &templates::expression(expr),
+                &b,
+                &a
             )
         },
         // output a call to `iter` in JS
         Control::Iter { suffix, subject_raw, subject, body, alt } => {
             let block = templates::iter(
                 suffix,
-                templates::expression(subject),
-                gen_body(body, false, &mut HashSet::new()).0,
-                gen_body(alt, false, &mut HashSet::new()).0
+                &templates::expression(subject),
+                &gen_body(body, false, &mut HashSet::new()).0,
+                &gen_body(alt, false, &mut HashSet::new()).0
             );
 
             // if top level, pull out into a block method
             if top && !block_names.contains(&subject_raw) {
                 let out = templates::block_call(&subject_raw);
-                blocks.push(templates::block(&subject_raw, block));
+                blocks.push(templates::block(&subject_raw, &block));
                 block_names.insert(subject_raw);
 
                 out
@@ -64,14 +64,14 @@ fn gen_body(entry: Vec<Control>, top: bool, mut block_names: &mut HashSet<String
         },
         // generate a guard expression
         Control::Raw { subject } => templates::expression(subject),
-    }).filter(|x| x.len() > 0).collect::<Vec<String>>();
+    }).filter(|x| !x.is_empty()).collect::<Vec<String>>();
 
-    (templates::concat(output), blocks)
+    (templates::concat(&output), blocks)
 }
 
 /// generate code from parser output
 pub fn generate(input: Vec<Control>) -> String {
     let (body, blocks) = gen_body(input, true, &mut HashSet::new());
 
-    templates::wrapper(body, blocks)
+    templates::wrapper(&body, &blocks)
 }

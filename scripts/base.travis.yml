@@ -18,6 +18,7 @@ cache: cargo
 env:
   global:
     - secure: JmR0cUK8EPkBo0cHD4Ml5j9ESA34q7idhTUj5vBvwYQ14VLmS3BnPmwN8pmjQptt0rknB6yqduZRj1IukZIf0y0rr+kV6yv3/hVCth8NeCV2qdDrn32uJzaY9jV/ULC03bwiT7LsM43WUnIOxphn2nfoY8WNs9kBCVu3ndJ+ctZWRpI5mtJ/7ouKi2dPrQmdnmVLT3dtoPqTDNKkc/r7qJIQzpW6TBMGKnKBhpl1pzexIMc5iZATpUqXN6fCVQlmhMSO+CeLYH9lYMTxrOHCUcTwzHi3+OH9PcY7DM8CylNd3GA9LP9DC7uKOcJJExVr2k7aPEmYNa8pIvcOmn/vzfZ5fMca47hwyOycoCbER9Q6bXAuEceDJQ2G5hyK+SG209okPJ3IuvYeXARD4nYD3jxI+J2YHmprjGLod/I7qAw05E6SfOau3t9kjVJyDi8D+UWlKSgBi6C8wwKzG6MYUNsfDlrXll1fQMbsTn+YNbOjode0Fuqw2EhPmg1LUxfEYI5VudFTLahsQcKy8gSNyBBc0jLlEGvcn+Qt5VVJcIok6bkD7yy+4dWdv5sZcg3s4PF295H5+hPiJ5BCgqRhxce6hEbCReM++w+O84oXqcrhgXNCLs1fHC0/6LR046KLg5CzprukYLQ0kdzwO8P2lo7970XscVx2tognWSb/z0A=
+    - CLIPPY_TOOLCHAIN: nightly
     - RUST_BACKTRACE: 1
 
 before_install:
@@ -26,8 +27,12 @@ before_install:
   - nvm install "${TRAVIS_NODE_VER}"
   - nvm use "${TRAVIS_NODE_VER}"
 
+before_script:
+  - source ./scripts/ci/before.sh
+
 script:
   - npm install --ignore-scripts
+  - cd benchpress_sys && cargo +$CLIPPY_TOOLCHAIN clippy && cd ..
   - npm test
 
 stages:
@@ -51,7 +56,6 @@ jobs:
     # - stage: build binaries
     #   rust: stable
     #   env: TRAVIS_NODE_VER=6 # 8, 9, 10
-    #   before_script: source ./scripts/ci/vars.sh
     #   after_success: source ./scripts/ci/add-binary.sh
 
     - stage: push binaries
@@ -61,5 +65,5 @@ jobs:
         - git clone https://github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_REPO_SLUG
         - cd $TRAVIS_REPO_SLUG
         - git checkout $TRAVIS_BRANCH
-      before_script: source ./scripts/ci/vars.sh
-      script: source ./scripts/ci/push-binaries.sh
+      script:
+        - source ./scripts/ci/push-binaries.sh

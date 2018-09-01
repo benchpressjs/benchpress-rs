@@ -26,8 +26,12 @@ install:
 
 build: false
 
+before_test:
+  - call scripts\ci\before.bat
+
 test_script:
   - npm install --ignore-scripts
+  - cd benchpress_sys && cargo +%CLIPPY_TOOLCHAIN% clippy && cd ..
   - npm test
 
 for:
@@ -38,8 +42,6 @@ for:
       - test_builds
   only_commits:
     message: /\[publish binary\]/
-  before_test:
-    - call scripts\ci\vars.bat
   on_success:
     - ps: ./scripts/ci/add-binary.ps1
   on_finish:
@@ -49,6 +51,7 @@ for:
     target: x86_64-pc-windows-msvc
     rust_channel: stable
     RUST_BACKTRACE: 1
+    CLIPPY_TOOLCHAIN: nightly
 
     matrix:
       
@@ -66,6 +69,7 @@ for:
   environment:
     target: x86_64-pc-windows-msvc
     RUST_BACKTRACE: 1
+    CLIPPY_TOOLCHAIN: nightly
 
     ### Test matrix ###
     matrix:

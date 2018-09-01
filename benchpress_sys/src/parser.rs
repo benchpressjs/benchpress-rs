@@ -85,7 +85,7 @@ pub fn parse_instructions(_source: &str, tokens: Vec<TokenPos>) -> Vec<Instructi
 use std::collections::HashSet;
 
 /// check if a vector starts with the elements of another vector
-pub fn starts_with<T>(full: &Vec<T>, part: &Vec<T>) -> bool
+pub fn starts_with<T>(full: &[T], part: &[T]) -> bool
 where
     T: Eq
 {
@@ -127,15 +127,15 @@ pub fn fix_extra_instructions(source: &str, input: Vec<InstructionPos>) -> Vec<I
                 ends_count += 1;
 
                 if let Some(expected_subject) = expected_subjects.pop() {
-                    if subject.len() > 0 && !starts_with(&expected_subject, subject) {
+                    if !subject.is_empty() && !starts_with(&expected_subject, subject) {
                         // doesn't start with what we expect, so remove it
                         remove.insert(elem.clone());
                         expected_subjects.push(expected_subject);
                     } else {
                         // search for an end within close proximity
                         // that has the expected subject
-                        for i in (index + 1)..input.len() {
-                            match &input[i] {
+                        for elem in input.iter().skip(index + 1) {
+                            match elem {
                                 InstructionPos { inst: Instruction::IfStart(_), .. } |
                                 InstructionPos { inst: Instruction::IterStart(_), .. } => {
                                     break;
@@ -212,12 +212,12 @@ pub enum Control {
 use paths;
 
 /// generate an expression from an interator of Tokens
-fn generate_expression<I>(iter: &mut Peekable<I>, base: &Vec<String>, suffix: u16) -> Option<Expression>
+fn generate_expression<I>(iter: &mut Peekable<I>, base: &[String], suffix: u16) -> Option<Expression>
 where
     I: Iterator<Item = Token>
 {
     let first = iter.next();
-    let second = iter.peek().map(|x| x.clone());
+    let second = iter.peek().cloned();
 
     match (first, second) {
         // negative expression (`!stuff`)
@@ -272,9 +272,9 @@ where
         }),
         // identifier (`object.prop`, `../name`)
         (Some(Token::Identifier(value)), _) => {
-            let path: Vec<String> = paths::split(value);
+            let path = paths::split(&value);
 
-            Some(Expression::PathExpression { path: paths::resolve(&base, path) })
+            Some(Expression::PathExpression { path: paths::resolve(&base, &path).to_vec() })
         },
         _ => None,
     }
@@ -284,7 +284,7 @@ where
 pub fn parse_tree<I>(
     source: &str,
     input: &mut I,
-    base: &Vec<String>,
+    base: &[String],
     suffix: u16,
 ) -> (Vec<Control>, Option<InstructionPos>)
 where
@@ -350,8 +350,9 @@ where
                 // use base if there's not a path
                 let path = match &subject {
                     Expression::PathExpression { path } => path.clone(),
-                    _ => base.clone(),
+                    _ => base.to_vec(),
                 };
+                let subject_raw = path.join(".");
 
                 // recursively parse for body and alt child trees
                 let (body, last) = parse_tree(source, input.by_ref(), &paths::iter_element(&path, suffix), suffix + 1);
@@ -366,7 +367,7 @@ where
 
                 output.push(Control::Iter {
                     suffix,
-                    subject_raw: path.join("."),
+                    subject_raw,
                     subject,
                     body,
                     alt,

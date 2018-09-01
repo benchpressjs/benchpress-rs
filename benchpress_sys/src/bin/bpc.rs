@@ -27,14 +27,14 @@ fn tree_tostring(tree: Vec<Control>) -> String {
 
     output = output.lines().map(|x| format!("  {}", x)).collect::<Vec<String>>().join("\n");
 
-    if output.len() > 0 {
-        format!("[\n{}\n]", output)
-    } else {
+    if output.is_empty() {
         "[]".to_string()
+    } else {
+        format!("[\n{}\n]", output)
     }
 }
 
-fn go(input: String, debug: bool) {
+fn go(input: &str, debug: bool) {
     let pre_fixed = pre_fixer::pre_fix(input);
     let lexed = lexer::lex(&pre_fixed);
     let first_parsed = parser::parse_instructions(&pre_fixed, lexed.clone());
@@ -69,13 +69,13 @@ fn main() -> io::Result<()> {
         let mut passed = String::new();
         stdin.lock().read_to_string(&mut passed)?;
 
-        go(passed, debug);
+        go(&passed, debug);
     } else if let Some(filepath) = { let mut args = std::env::args(); if args.any(|x| x == "-i") { args.next() } else { None } } {
         let mut file = File::open(filepath)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
-        go(contents, debug);
+        go(&contents, debug);
     } else {
         loop {
             // Stdout needs to be flushed, due to missing newline
@@ -85,7 +85,7 @@ fn main() -> io::Result<()> {
             let mut line = String::new();
             stdin.lock().read_line(&mut line)?;
             
-            go(line, debug);
+            go(&line, debug);
         }
     }
 
