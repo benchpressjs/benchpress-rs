@@ -1,5 +1,4 @@
-benchpress_sys/target
-native/target
+target
 native/index.node
 native/artifacts.json
 **/*~
