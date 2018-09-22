@@ -1,27 +1,35 @@
 use regex::{Regex, Captures};
-use onig;
 
 // `<!-- BEGIN stuff -->` => `<!-- BEGIN ../stuff -->` and `<!-- BEGIN stuff -->`
 // we need to add the fallback by duplicating under a different key
 // only apply to nested blocks
 fn fix_iter(input: &str, first: bool) -> String {
     lazy_static! {
-        static ref LEGACY_ITER_PATTERN: onig::Regex = onig::Regex::new(r"<!-- BEGIN ([^./][@a-zA-Z0-9/.\-_:]+?) -->([\s\S]*?)<!-- END \1 -->").unwrap();
+        static ref LEGACY_ITER_PATTERN: Regex = Regex::new(r"<!-- BEGIN ([^./][@a-zA-Z0-9/.\-_:]+?) -->([\s\S]*)").unwrap();
     }
     
-    LEGACY_ITER_PATTERN.replace_all(input, |caps: &onig::Captures| {
-        let subject = caps.at(1).unwrap_or("");
-        let body = fix_iter(caps.at(2).unwrap_or(""), false);
+    LEGACY_ITER_PATTERN.replace(input, |caps: &Captures| {
+        let subject = &caps[1];
+        let after = &caps[2];
+        
+        let end = format!("<!-- END {} -->", subject);
+
+        let mut split = after.splitn(2, end.as_str());
+        let body = split.next().unwrap_or("");
+        let rest = split.next().unwrap_or("");
+
+        let body = fix_iter(body, false);
+        let rest = fix_iter(rest, first);
 
         if first {
-            format!("<!-- BEGIN {} -->{}<!-- END {} -->", subject, body, subject)
+            format!("<!-- BEGIN {} -->{}<!-- END {} -->{}", subject, body, subject, rest)
         } else {
             format!(
-                "<!-- IF ../{} --><!-- BEGIN ../{} -->{}<!-- END ../{} --><!-- ELSE --><!-- BEGIN {} -->{}<!-- END {} --><!-- ENDIF ../{} -->",
-                subject, subject, body, subject, subject, body, subject, subject
+                "<!-- IF ../{} --><!-- BEGIN ../{} -->{}<!-- END ../{} --><!-- ELSE --><!-- BEGIN {} -->{}<!-- END {} --><!-- ENDIF ../{} -->{}",
+                subject, subject, body, subject, subject, body, subject, subject, rest
             )
         }
-    })
+    }).into_owned()
 }
 
 // combined regex replacement
@@ -90,6 +98,39 @@ pub fn pre_fix(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn iter() {
+        let source = "
+        <!-- BEGIN thing -->
+        thing
+            <!-- BEGIN inner -->
+            inner
+            <!-- END inner -->
+        <!-- END thing -->
+
+        <!-- BEGIN stuff -->
+        stuff
+        <!-- END stuff -->
+        ";
+
+        let expected = "
+        <!-- BEGIN thing -->
+        thing
+            <!-- IF ../inner --><!-- BEGIN ../inner -->
+            inner
+            <!-- END ../inner --><!-- ELSE --><!-- BEGIN inner -->
+            inner
+            <!-- END inner --><!-- ENDIF ../inner -->
+        <!-- END thing -->
+
+        <!-- BEGIN stuff -->
+        stuff
+        <!-- END stuff -->
+        ";
+
+        assert_eq!(pre_fix(source), expected)
+    }
 
     #[test]
     fn loop_helpers() {

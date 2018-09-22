@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
-extern crate onig;
 extern crate itertools;
 extern crate json;
 
