@@ -15,19 +15,26 @@ fn fix_iter(input: &str, first: bool) -> String {
         let end = format!("<!-- END {} -->", subject);
 
         let mut split = after.splitn(2, end.as_str());
-        let body = split.next().unwrap_or("");
-        let rest = split.next().unwrap_or("");
+        match (split.next(), split.next()) {
+            (Some(body), Some(rest)) => {
+                let body = fix_iter(body, false);
+                let rest = fix_iter(rest, first);
 
-        let body = fix_iter(body, false);
-        let rest = fix_iter(rest, first);
+                if first {
+                    format!("<!-- BEGIN {} -->{}<!-- END {} -->{}", subject, body, subject, rest)
+                } else {
+                    format!(
+                        "<!-- IF ../{} --><!-- BEGIN ../{} -->{}<!-- END ../{} --><!-- ELSE --><!-- BEGIN {} -->{}<!-- END {} --><!-- ENDIF ../{} -->{}",
+                        subject, subject, body, subject, subject, body, subject, subject, rest
+                    )
+                }
+            },
+            (Some(rest), None) => {
+                let rest = fix_iter(rest, first);
 
-        if first {
-            format!("<!-- BEGIN {} -->{}<!-- END {} -->{}", subject, body, subject, rest)
-        } else {
-            format!(
-                "<!-- IF ../{} --><!-- BEGIN ../{} -->{}<!-- END ../{} --><!-- ELSE --><!-- BEGIN {} -->{}<!-- END {} --><!-- ENDIF ../{} -->{}",
-                subject, subject, body, subject, subject, body, subject, subject, rest
-            )
+                format!("<!-- BEGIN {} -->{}", subject, rest)
+            },
+            _ => unreachable!(),
         }
     }).into_owned()
 }
@@ -112,6 +119,10 @@ mod tests {
         <!-- BEGIN stuff -->
         stuff
         <!-- END stuff -->
+
+        <!-- BEGIN people -->
+        {people.name} is {../age} years old.
+        <!-- END -->
         ";
 
         let expected = "
@@ -127,9 +138,55 @@ mod tests {
         <!-- BEGIN stuff -->
         stuff
         <!-- END stuff -->
+
+        <!-- BEGIN people -->
+        {people.name} is {../age} years old.
+        <!-- END -->
         ";
 
-        assert_eq!(pre_fix(source), expected)
+        assert_eq!(fix_iter(source, true), expected);
+
+        let source = r##"
+        <div id="container">
+        <!-- IF rooms.length -->
+            <!-- BEGIN rooms -->
+                <!-- IF !rooms.private -->
+                    <a data-func="webrtc.joinRoom" data-room="{rooms.slug}" href="#" class="list-group-item">
+                        <h4 class="list-group-item-heading">{rooms.name}</h4>
+                        <p class="list-group-item-text">{rooms.description}</p>
+                    </a>
+                <!-- ENDIF !rooms.private -->
+            <!-- END rooms -->
+        <!-- ELSE -->
+            <a data-func="webrtc.newRoom" href="#" class="list-group-item">
+                <h4 class="list-group-item-heading">No rooms currently available!</h4>
+                <p class="list-group-item-text">Click here to create one!</p>
+            </a>
+        <!-- ENDIF rooms.length -->
+        </div><!-- END container -->
+        "##;
+
+        let expected = r##"
+        <div id="container">
+        <!-- IF rooms.length -->
+            <!-- BEGIN rooms -->
+                <!-- IF !rooms.private -->
+                    <a data-func="webrtc.joinRoom" data-room="{rooms.slug}" href="#" class="list-group-item">
+                        <h4 class="list-group-item-heading">{rooms.name}</h4>
+                        <p class="list-group-item-text">{rooms.description}</p>
+                    </a>
+                <!-- ENDIF !rooms.private -->
+            <!-- END rooms -->
+        <!-- ELSE -->
+            <a data-func="webrtc.newRoom" href="#" class="list-group-item">
+                <h4 class="list-group-item-heading">No rooms currently available!</h4>
+                <p class="list-group-item-text">Click here to create one!</p>
+            </a>
+        <!-- ENDIF rooms.length -->
+        </div><!-- END container -->
+        "##;
+
+        assert_eq!(fix_iter(source, true), expected);
     }
 
     #[test]
