@@ -134,8 +134,8 @@ pub fn fix_extra_instructions(source: &str, input: Vec<InstructionPos>) -> Vec<I
                     } else {
                         // search for an end within close proximity
                         // that has the expected subject
-                        for elem in input.iter().skip(index + 1) {
-                            match elem {
+                        for ahead in input.iter().skip(index + 1) {
+                            match ahead {
                                 InstructionPos { inst: Instruction::IfStart(_), .. } |
                                 InstructionPos { inst: Instruction::IterStart(_), .. } => {
                                     break;
