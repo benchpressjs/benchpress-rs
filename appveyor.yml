@@ -11,7 +11,7 @@ branches:
 matrix:
   allow_failures:
     - rust_channel: nightly
-    - nodejs_version: 10
+    - nodejs_version: 11
 
 install:
   - ps: Install-Product node $env:nodejs_version x64
@@ -55,10 +55,10 @@ for:
 
     matrix:
       
-      - nodejs_version: 6
       - nodejs_version: 8
-      - nodejs_version: 9
       - nodejs_version: 10
+      - nodejs_version: 11
+      - nodejs_version: 12
         final_build: 'true'
 
 -
@@ -74,42 +74,42 @@ for:
     ### Test matrix ###
     matrix:
       # -
-      #   rust_channel: stable # beta, nightly
-      #   nodejs_version: 6 # 8, 9, 10
-
-      - rust_channel: stable
-        nodejs_version: 6
+      #   rust_channel: stable, beta, nightly
+      #   nodejs_version: 8, 10, 11
 
       - rust_channel: stable
         nodejs_version: 8
 
       - rust_channel: stable
-        nodejs_version: 9
+        nodejs_version: 10
 
       - rust_channel: stable
-        nodejs_version: 10
+        nodejs_version: 11
 
-      - rust_channel: beta
-        nodejs_version: 6
+      - rust_channel: stable
+        nodejs_version: 12
 
       - rust_channel: beta
         nodejs_version: 8
 
       - rust_channel: beta
-        nodejs_version: 9
-
-      - rust_channel: beta
         nodejs_version: 10
 
-      - rust_channel: nightly
-        nodejs_version: 6
+      - rust_channel: beta
+        nodejs_version: 11
+
+      - rust_channel: beta
+        nodejs_version: 12
 
       - rust_channel: nightly
         nodejs_version: 8
 
       - rust_channel: nightly
-        nodejs_version: 9
+        nodejs_version: 10
 
       - rust_channel: nightly
-        nodejs_version: 10
+        nodejs_version: 11
+
+      - rust_channel: nightly
+        nodejs_version: 12
 

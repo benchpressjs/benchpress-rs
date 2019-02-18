@@ -46,21 +46,21 @@ stages:
 jobs:
   allow_failures:
     - rust: nightly
-    - env: TRAVIS_NODE_VER=10
+    - env: TRAVIS_NODE_VER=11
 
   include:
     # - stage: test
-    #   rust: stable # beta, nightly
-    #   env: TRAVIS_NODE_VER=6 # 8, 9, 10
+    #   rust: stable, beta, nightly
+    #   env: TRAVIS_NODE_VER=8, 10, 11
 
     # - stage: build binaries
     #   rust: stable
-    #   env: TRAVIS_NODE_VER=6 # 8, 9, 10
+    #   env: TRAVIS_NODE_VER=8, 10, 11
     #   after_success: source ./scripts/ci/add-binary.sh
 
     - stage: push binaries
       rust: stable
-      env: TRAVIS_NODE_VER=8
+      env: TRAVIS_NODE_VER=10
       before_install:
         - git clone https://github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_REPO_SLUG
         - cd $TRAVIS_REPO_SLUG

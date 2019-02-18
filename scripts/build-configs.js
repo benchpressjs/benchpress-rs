@@ -10,10 +10,10 @@ const rustVersions = [
 ];
 
 const nodeVersions = [
-  '6',
   '8',
-  '9',
   '10',
+  '11',
+  '12',
 ];
 
 const testJobs = [];
