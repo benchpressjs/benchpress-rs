@@ -50,7 +50,7 @@ for:
     target: x86_64-pc-windows-msvc
     rust_channel: stable
     RUST_BACKTRACE: 1
-    CLIPPY_TOOLCHAIN: nightly
+    CLIPPY_TOOLCHAIN: stable
 
     matrix:
       ${NODE_VERSIONS}
@@ -64,7 +64,7 @@ for:
   environment:
     target: x86_64-pc-windows-msvc
     RUST_BACKTRACE: 1
-    CLIPPY_TOOLCHAIN: nightly
+    CLIPPY_TOOLCHAIN: stable
 
     ### Test matrix ###
     matrix:

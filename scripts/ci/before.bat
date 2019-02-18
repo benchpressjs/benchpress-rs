@@ -9,4 +9,4 @@ IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
 )
 
 rustup install %CLIPPY_TOOLCHAIN%
-rustup component add clippy-preview --toolchain=%CLIPPY_TOOLCHAIN%
+rustup component add clippy --toolchain=%CLIPPY_TOOLCHAIN%

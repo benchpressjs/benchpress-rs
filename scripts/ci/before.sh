@@ -13,4 +13,4 @@ if [[ "$TRAVIS_COMMIT_MESSAGE" = *"[publish binary]"* ]]; then
 fi
 
 rustup install $CLIPPY_TOOLCHAIN
-rustup component add clippy-preview --toolchain=$CLIPPY_TOOLCHAIN
+rustup component add clippy --toolchain=$CLIPPY_TOOLCHAIN
