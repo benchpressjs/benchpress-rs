@@ -59,6 +59,7 @@ for:
       - nodejs_version: 10
       - nodejs_version: 11
       - nodejs_version: 12
+      - nodejs_version: 13
         final_build: 'true'
 
 -
@@ -89,6 +90,9 @@ for:
       - rust_channel: stable
         nodejs_version: 12
 
+      - rust_channel: stable
+        nodejs_version: 13
+
       - rust_channel: beta
         nodejs_version: 8
 
@@ -101,6 +105,9 @@ for:
       - rust_channel: beta
         nodejs_version: 12
 
+      - rust_channel: beta
+        nodejs_version: 13
+
       - rust_channel: nightly
         nodejs_version: 8
 
@@ -112,4 +119,7 @@ for:
 
       - rust_channel: nightly
         nodejs_version: 12
+
+      - rust_channel: nightly
+        nodejs_version: 13
 

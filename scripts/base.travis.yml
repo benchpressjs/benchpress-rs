@@ -10,9 +10,6 @@ branches:
 
 language: rust
 
-matrix:
-  fast_finish: true
-
 cache: cargo
 
 env:
@@ -44,9 +41,9 @@ stages:
     if: type = push AND branch =~ _builds$
 
 jobs:
+  fast_finish: true
   allow_failures:
     - rust: nightly
-    - env: TRAVIS_NODE_VER=11
 
   include:
     # - stage: test

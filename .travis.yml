@@ -11,9 +11,6 @@ branches:
 
 language: rust
 
-matrix:
-  fast_finish: true
-
 cache: cargo
 
 env:
@@ -45,9 +42,9 @@ stages:
     if: type = push AND branch =~ _builds$
 
 jobs:
+  fast_finish: true
   allow_failures:
     - rust: nightly
-    - env: TRAVIS_NODE_VER=11
 
   include:
     # - stage: test
@@ -87,6 +84,10 @@ jobs:
       env: TRAVIS_NODE_VER=12
 
     - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=13
+
+    - stage: test
       rust: beta
       env: TRAVIS_NODE_VER=8
 
@@ -103,6 +104,10 @@ jobs:
       env: TRAVIS_NODE_VER=12
 
     - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=13
+
+    - stage: test
       rust: nightly
       env: TRAVIS_NODE_VER=8
 
@@ -117,6 +122,10 @@ jobs:
     - stage: test
       rust: nightly
       env: TRAVIS_NODE_VER=12
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=13
 
 
 
@@ -139,5 +148,10 @@ jobs:
     - stage: build binaries
       rust: stable
       env: TRAVIS_NODE_VER=12
+      after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=13
       after_success: source ./scripts/ci/add-binary.sh
 
