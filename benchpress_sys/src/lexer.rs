@@ -199,7 +199,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                     slicer.skip_spaces();
                 }
             } else {
-                let name = sub_slice.to_string();
+                let name = sub_slice;
                 output.push(TokenPos {
                     start: slicer.start,
                     end: slicer.end,
@@ -367,7 +367,7 @@ pub fn lex(input: &str) -> Vec<TokenPos> {
                     output.push(TokenPos {
                         start: slicer.start,
                         end: slicer.start + len,
-                        tok: Token::Text(target.to_string()),
+                        tok: Token::Text((*target).to_string()),
                     });
                     slicer.step_by(len);
                 } else {

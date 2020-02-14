@@ -234,7 +234,7 @@ where
             let end = match iter.next() {
                 Some(Token::LeftParen) => if iter.peek() == Some(&Token::RightParen) {
                     return Some(Expression::HelperExpression {
-                        helper_name: name.to_string(),
+                        helper_name: name,
                         args: Vec::new(),
                     })
                 } else {
@@ -262,7 +262,7 @@ where
             } {}
 
             Some(Expression::HelperExpression {
-                helper_name: name.to_string(),
+                helper_name: name,
                 args,
             })
         },

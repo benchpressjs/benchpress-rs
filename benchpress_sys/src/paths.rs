@@ -20,7 +20,7 @@ pub fn relative(base: &[String], rel: &[String]) -> Vec<String> {
         output
     } else {
         let mut output = base.to_vec();
-        let mut iter = rel.into_iter().peekable();
+        let mut iter = rel.iter().peekable();
 
         match iter.peek().unwrap().as_str() {
             "../" | "./" => {
