@@ -14,7 +14,7 @@
   },
   "scripts": {
     "test": "cd benchpress_sys && cargo test && cd .. && neon build --release && node -p 'require(\"./\").compile(\"{{thing}}\")'",
-    "install": "neon build >> build.log 2>&1 || exit 0",
+    "install": "neon build --release >> build.log 2>&1 || exit 0",
     "release": "node scripts/release",
     "build-configs": "node scripts/build-configs"
   }
