@@ -1,8 +1,3 @@
-extern crate benchpress_sys;
-
-#[macro_use]
-extern crate neon;
-
 use neon::prelude::*;
 
 fn compile_source(mut cx: FunctionContext) -> JsResult<JsString> {

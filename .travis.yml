@@ -77,15 +77,15 @@ jobs:
 
     - stage: test
       rust: stable
-      env: TRAVIS_NODE_VER=11
-
-    - stage: test
-      rust: stable
       env: TRAVIS_NODE_VER=12
 
     - stage: test
       rust: stable
       env: TRAVIS_NODE_VER=13
+
+    - stage: test
+      rust: stable
+      env: TRAVIS_NODE_VER=14
 
     - stage: test
       rust: beta
@@ -97,15 +97,15 @@ jobs:
 
     - stage: test
       rust: beta
-      env: TRAVIS_NODE_VER=11
-
-    - stage: test
-      rust: beta
       env: TRAVIS_NODE_VER=12
 
     - stage: test
       rust: beta
       env: TRAVIS_NODE_VER=13
+
+    - stage: test
+      rust: beta
+      env: TRAVIS_NODE_VER=14
 
     - stage: test
       rust: nightly
@@ -117,15 +117,15 @@ jobs:
 
     - stage: test
       rust: nightly
-      env: TRAVIS_NODE_VER=11
-
-    - stage: test
-      rust: nightly
       env: TRAVIS_NODE_VER=12
 
     - stage: test
       rust: nightly
       env: TRAVIS_NODE_VER=13
+
+    - stage: test
+      rust: nightly
+      env: TRAVIS_NODE_VER=14
 
 
 
@@ -142,16 +142,16 @@ jobs:
 
     - stage: build binaries
       rust: stable
-      env: TRAVIS_NODE_VER=11
-      after_success: source ./scripts/ci/add-binary.sh
-
-    - stage: build binaries
-      rust: stable
       env: TRAVIS_NODE_VER=12
       after_success: source ./scripts/ci/add-binary.sh
 
     - stage: build binaries
       rust: stable
       env: TRAVIS_NODE_VER=13
+      after_success: source ./scripts/ci/add-binary.sh
+
+    - stage: build binaries
+      rust: stable
+      env: TRAVIS_NODE_VER=14
       after_success: source ./scripts/ci/add-binary.sh
 

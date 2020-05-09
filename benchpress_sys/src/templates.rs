@@ -362,11 +362,11 @@ mod tests {
     #[test]
     fn guard_test() {
         assert_eq!(guard(
-            ["thing", "stuff"].iter().map(|x| x.to_string()).collect::<Vec<String>>()
+            ["thing", "stuff"].iter().map(|&x| x.to_string()).collect::<Vec<String>>()
         ), "guard(context && context['thing'] && context['thing']['stuff'])");
 
         assert_eq!(guard(
-            ["items[1]", "prop"].iter().map(|x| x.to_string()).collect::<Vec<String>>()
+            ["items[1]", "prop"].iter().map(|&x| x.to_string()).collect::<Vec<String>>()
         ), "guard(context && context['items'] && context['items'][key1] && context['items'][key1]['prop'])".to_string());
 
         assert_eq!(guard(
