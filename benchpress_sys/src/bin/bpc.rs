@@ -1,31 +1,50 @@
 extern crate benchpress_sys;
 
-use benchpress_sys::{parser, pre_fixer, lexer, generator};
+use benchpress_sys::{generator, lexer, parser, pre_fixer};
 use parser::Control;
 
-use std::io::{self, BufRead, Write, Read};
 use std::fs::File;
+use std::io::{self, BufRead, Read, Write};
 
 fn tree_tostring(tree: Vec<Control>) -> String {
     let mut output = String::new();
-    
+
     for elem in tree {
-        output.push_str(match elem {
-            Control::If { subject, body, alt } => format!(
-                "If {{ subject: {:?}, body: {}, alt: {} }},",
-                subject, tree_tostring(body), tree_tostring(alt)
-            ),
-            Control::Iter { subject_raw, suffix, subject, body, alt } => format!(
-                "Iter {{ suffix: {}, raw: {}, subject: {:?}, body: {}, alt: {} }},",
-                suffix, subject_raw, subject, tree_tostring(body), tree_tostring(alt)
-            ),
-            _ => format!("{:?},", elem),
-        }.as_str());
+        output.push_str(
+            match elem {
+                Control::If { subject, body, alt } => format!(
+                    "If {{ subject: {:?}, body: {}, alt: {} }},",
+                    subject,
+                    tree_tostring(body),
+                    tree_tostring(alt)
+                ),
+                Control::Iter {
+                    subject_raw,
+                    suffix,
+                    subject,
+                    body,
+                    alt,
+                } => format!(
+                    "Iter {{ suffix: {}, raw: {}, subject: {:?}, body: {}, alt: {} }},",
+                    suffix,
+                    subject_raw,
+                    subject,
+                    tree_tostring(body),
+                    tree_tostring(alt)
+                ),
+                _ => format!("{:?},", elem),
+            }
+            .as_str(),
+        );
 
         output.push('\n');
     }
 
-    output = output.lines().map(|x| format!("  {}", x)).collect::<Vec<String>>().join("\n");
+    output = output
+        .lines()
+        .map(|x| format!("  {}", x))
+        .collect::<Vec<String>>()
+        .join("\n");
 
     if output.is_empty() {
         "[]".to_string()
@@ -39,7 +58,12 @@ fn go(input: &str, debug: bool) {
     let lexed = lexer::lex(&pre_fixed);
     let first_parsed = parser::parse_instructions(&pre_fixed, lexed.clone());
     let extras_fixed = parser::fix_extra_instructions(&pre_fixed, first_parsed.clone());
-    let (tree, _) = parser::parse_tree(&pre_fixed, &mut extras_fixed.clone().into_iter(), &Vec::new(), 1);
+    let (tree, _) = parser::parse_tree(
+        &pre_fixed,
+        &mut extras_fixed.clone().into_iter(),
+        &Vec::new(),
+        1,
+    );
 
     let code = generator::generate(tree.clone());
 
@@ -70,7 +94,14 @@ fn main() -> io::Result<()> {
         stdin.lock().read_to_string(&mut passed)?;
 
         go(&passed, debug);
-    } else if let Some(filepath) = { let mut args = std::env::args(); if args.any(|x| x == "-i") { args.next() } else { None } } {
+    } else if let Some(filepath) = {
+        let mut args = std::env::args();
+        if args.any(|x| x == "-i") {
+            args.next()
+        } else {
+            None
+        }
+    } {
         let mut file = File::open(filepath)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
@@ -84,7 +115,7 @@ fn main() -> io::Result<()> {
 
             let mut line = String::new();
             stdin.lock().read_line(&mut line)?;
-            
+
             go(&line, debug);
         }
     }

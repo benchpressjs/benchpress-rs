@@ -1,17 +1,18 @@
-use regex::{Regex, Captures};
+use regex::{Captures, Regex};
 
 // `<!-- BEGIN stuff -->` => `<!-- BEGIN ../stuff -->` and `<!-- BEGIN stuff -->`
 // we need to add the fallback by duplicating under a different key
 // only apply to nested blocks
 fn fix_iter(input: &str, first: bool) -> String {
     lazy_static! {
-        static ref LEGACY_ITER_PATTERN: Regex = Regex::new(r"<!-- BEGIN ([^./][@a-zA-Z0-9/.\-_:]+?) -->([\s\S]*)").unwrap();
+        static ref LEGACY_ITER_PATTERN: Regex =
+            Regex::new(r"<!-- BEGIN ([^./][@a-zA-Z0-9/.\-_:]+?) -->([\s\S]*)").unwrap();
     }
-    
+
     LEGACY_ITER_PATTERN.replace(input, |caps: &Captures| {
         let subject = &caps[1];
         let after = &caps[2];
-        
+
         let end = format!("<!-- END {} -->", subject);
 
         let mut split = after.splitn(2, end.as_str());
@@ -42,7 +43,8 @@ fn fix_iter(input: &str, first: bool) -> String {
 // combined regex replacement
 fn combined(input: &str) -> String {
     lazy_static! {
-        static ref COMBINED: Regex = Regex::new(r"(?x)
+        static ref COMBINED: Regex = Regex::new(
+            r"(?x)
             # helpers root
             (?P<if_helpers>
                 # '\x20' is a space
@@ -64,38 +66,42 @@ fn combined(input: &str) -> String {
                 (?:\{{1,2}[^}]+\}{1,2})|(?:<!--[^>]+-->)|
                 (?P<outside_tokens_lone>@key|@value|@index)
             )
-        ").unwrap();
+        "
+        )
+        .unwrap();
     }
 
-    COMBINED.replace_all(input, |caps: &Captures| {
-        if caps.name("if_helpers").is_some() {
-            // add root data to legacy if helpers
-            let name = &caps["if_helpers_name"].to_string();
-            let args = &caps["if_helpers_args"].to_string();
+    COMBINED
+        .replace_all(input, |caps: &Captures| {
+            if caps.name("if_helpers").is_some() {
+                // add root data to legacy if helpers
+                let name = &caps["if_helpers_name"].to_string();
+                let args = &caps["if_helpers_args"].to_string();
 
-            if args.is_empty() {
-                format!("<!-- IF function.{}, @root -->", name)
+                if args.is_empty() {
+                    format!("<!-- IF function.{}, @root -->", name)
+                } else {
+                    format!("<!-- IF function.{}, @root, {} -->", name, args)
+                }
+            } else if caps.name("loop_helpers").is_some() {
+                // add value context for in-loop helpers
+                let name = &caps["loop_helpers_name"].to_string();
+                format!("{{function.{}, @value}}", name)
+            } else if caps.name("outside_tokens").is_some() {
+                // wrap `@key`, `@value`, `@index` in mustaches
+                // if they aren't in a mustache already
+                let orig = &caps[0];
+
+                if let Some(lone) = caps.name("outside_tokens_lone") {
+                    format!("{{{}}}", lone.as_str())
+                } else {
+                    orig.to_string()
+                }
             } else {
-                format!("<!-- IF function.{}, @root, {} -->", name, args)
+                String::new()
             }
-        } else if caps.name("loop_helpers").is_some() {
-            // add value context for in-loop helpers
-            let name = &caps["loop_helpers_name"].to_string();
-            format!("{{function.{}, @value}}", name)
-        } else if caps.name("outside_tokens").is_some() {
-            // wrap `@key`, `@value`, `@index` in mustaches
-            // if they aren't in a mustache already
-            let orig = &caps[0];
-            
-            if let Some(lone) = caps.name("outside_tokens_lone") {
-                format!("{{{}}}", lone.as_str())
-            } else {
-                orig.to_string()
-            }
-        } else {
-            String::new()
-        }
-    }).into_owned()
+        })
+        .into_owned()
 }
 
 pub fn pre_fix(input: &str) -> String {

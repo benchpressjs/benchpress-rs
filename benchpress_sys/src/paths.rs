@@ -25,7 +25,7 @@ pub fn relative(base: &[String], rel: &[String]) -> Vec<String> {
         match iter.peek().unwrap().as_str() {
             "../" | "./" => {
                 iter.next();
-            },
+            }
             _ => (),
         }
 
@@ -33,10 +33,10 @@ pub fn relative(base: &[String], rel: &[String]) -> Vec<String> {
             match part.as_str() {
                 "../" => {
                     output.pop();
-                },
+                }
                 _ => {
                     output.push(part.to_string());
-                },
+                }
             }
         }
 
@@ -54,23 +54,23 @@ pub fn split(rel: &str) -> Vec<String> {
         match (prev.as_str(), cur) {
             (".", '.') => {
                 prev.push(cur);
-            },
+            }
             (".", '/') | ("..", '/') => {
                 prev.push(cur);
                 output.push(prev);
                 prev = String::new();
-            },
+            }
             (_, '.') => {
                 if !prev.is_empty() {
                     output.push(prev);
                 }
                 prev = String::new();
                 prev.push(cur);
-            },
+            }
             (".", _) => {
                 prev = String::new();
                 prev.push(cur);
-            },
+            }
             _ => prev.push(cur),
         }
     }
@@ -111,7 +111,9 @@ pub fn resolve(base: &[String], rel: &[String]) -> Vec<String> {
                         Some(fixed) => fixed,
                         None => b_part,
                     }
-                } else { b_part };
+                } else {
+                    b_part
+                };
 
                 let r_part = &rel[i];
 
@@ -157,7 +159,7 @@ mod tests {
     #[test]
     fn split_test() {
         assert_eq!(
-            split("../../thing"), 
+            split("../../thing"),
             ["../".to_string(), "../".to_string(), "thing".to_string()]
         );
     }
@@ -165,7 +167,10 @@ mod tests {
     #[test]
     fn rel_test() {
         assert_eq!(
-            relative(&[], &["../".to_string(), "../".to_string(), "thing".to_string()]),
+            relative(
+                &[],
+                &["../".to_string(), "../".to_string(), "thing".to_string()]
+            ),
             ["thing".to_string()]
         );
     }

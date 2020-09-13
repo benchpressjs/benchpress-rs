@@ -1,17 +1,17 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate regex;
 extern crate itertools;
 extern crate json;
+extern crate regex;
 
-pub mod token;
-pub mod lexer;
+pub mod generator;
 pub mod instruction;
+pub mod lexer;
 pub mod parser;
 pub mod paths;
 pub mod pre_fixer;
 pub mod templates;
-pub mod generator;
+pub mod token;
 
 pub fn compile(template: &str) -> String {
     let pre_fixed = pre_fixer::pre_fix(template);

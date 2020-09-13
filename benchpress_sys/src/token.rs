@@ -11,22 +11,22 @@ pub enum Token {
 
     LegacyHelper, // function.
 
-    BlockOpen, // {{{, <!--
+    BlockOpen,  // {{{, <!--
     BlockClose, // }}}, -->
 
-    If, // if, IF
+    If,   // if, IF
     Else, // else, ELSE
     Iter, // each, BEGIN
-    End, // end, END, ENDIF
+    End,  // end, END, ENDIF
 
-    Bang, // !
-    LeftParen, // (
+    Bang,       // !
+    LeftParen,  // (
     RightParen, // )
-    Comma, // ,
+    Comma,      // ,
 
-    RawOpen, // {{
-    RawClose, // }}
-    EscapedOpen, // {
+    RawOpen,      // {{
+    RawClose,     // }}
+    EscapedOpen,  // {
     EscapedClose, // }
 }
 

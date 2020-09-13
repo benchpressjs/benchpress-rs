@@ -1,16 +1,16 @@
-use token::{Token};
+use token::Token;
 
 /// template instructions
 /// `{stuff}`, `{{{each people}}}`, etc
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Instruction {
-    Text(String), // everything that not's an instruction
-    Escaped(Vec<Token>), // `{stuff}`
-    Raw(Vec<Token>), // `{{html}}`
-    IfStart(Vec<Token>), // `{{{if animal.carnivorous}}}`, `<!-- IF animal.carnivorous -->`
+    Text(String),          // everything that not's an instruction
+    Escaped(Vec<Token>),   // `{stuff}`
+    Raw(Vec<Token>),       // `{{html}}`
+    IfStart(Vec<Token>),   // `{{{if animal.carnivorous}}}`, `<!-- IF animal.carnivorous -->`
     IterStart(Vec<Token>), // `{{{each people}}}`, `<!-- BEGIN peopl -->`
-    Else, // `{{{else}}}`, `<!-- ELSE -->`
-    End(Vec<Token>), // `{{{end}}}`, `<!-- END -->`, `<!-- ENDIF animal.carnivorous -->`
+    Else,                  // `{{{else}}}`, `<!-- ELSE -->`
+    End(Vec<Token>),       // `{{{end}}}`, `<!-- END -->`, `<!-- ENDIF animal.carnivorous -->`
 }
 
 /// a wrapper for Instructions, containing source position information
@@ -30,4 +30,3 @@ impl InstructionPos {
         source[self.start..self.end].to_string()
     }
 }
-

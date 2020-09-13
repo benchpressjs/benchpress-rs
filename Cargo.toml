@@ -1,0 +1,2 @@
+[workspace]
+members = ["benchpress_sys", "native"]
