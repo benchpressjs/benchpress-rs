@@ -1,17 +1,17 @@
-if [[ "${PUBLISH_BINARY}" = "true" ]]; then
-  echo "Adding binary"
+#!/bin/bash
+set -eo pipefail
+IFS=$'\n\t'
 
-  git fetch
-  git checkout "${TRAVIS_BRANCH}"
-  git pull
-  node scripts/copy-binary
-  git add --all pre-built
-  git commit -m "Updated binary module [skip ci]"
+echo "Adding binary"
 
-  # retry if fails, probably because race condition
-  NEXT_WAIT_TIME=0
-  until ( git push && echo "Successfully published binary" ) || [[ $NEXT_WAIT_TIME = 4 ]]; do
-    git pull --rebase
-    sleep $(( NEXT_WAIT_TIME++ ))
-  done
-fi
+node scripts/copy-binary
+git add pre-built/*.node
+git commit -m "Updated binary module [skip ci]"
+git pull --rebase
+
+# retry if fails, probably because race condition
+NEXT_WAIT_TIME=0
+until ( git push && echo "Successfully added binary" ) || [[ $NEXT_WAIT_TIME = 4 ]]; do
+  sleep $(( NEXT_WAIT_TIME++ ))
+  git pull --rebase
+done

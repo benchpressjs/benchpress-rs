@@ -1,0 +1,84 @@
+name: Build and publish binaries for distribution with npm package
+
+on:
+  push:
+    branches:
+      - master_builds
+      - test_builds
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build binary
+    if: "contains(github.event.head_commit.message, '[publish binary]')"
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [10, 12, 13, 14]
+    continue-on-error: ${{ matrix.rust == 'nightly' }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Clone git repository
+        run: git clone https://github.com/${{ github.repository }} -b ${GITHUB_REF#refs/heads/} .
+
+      - name: Setup git for publish
+        run: |
+          git config --global user.email "p.jaszkow@gmail.com"
+          git config --global user.name "Github Actions"
+          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
+
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          profile: minimal
+
+      - name: NPM install
+        run: npm install --ignore-scripts
+
+      - name: Neon build
+        run: node_modules/.bin/neon build --release
+
+      - name: Add binary
+        run: bash scripts/ci/add-binary.sh
+
+  push:
+    name: Publish binaries to base branch
+    if: "contains(github.event.head_commit.message, '[publish binary]')"
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set branch env vars
+        id: vars
+        run: |
+          current="${GITHUB_REF#refs/heads/}"
+          base=${current%_builds}
+          echo "::set-output name=current_branch::${current}"
+          echo "::set-output name=base_branch::${base}"
+
+      - name: Clone git repository
+        run: git clone https://github.com/${{ github.repository }} -b ${{ steps.vars.outputs.base_branch }} .
+
+      - name: Setup git for publish
+        run: |
+          git config --global user.email "p.jaszkow@gmail.com"
+          git config --global user.name "Github Actions"
+          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
+
+      - name: Push binaries
+        run: |
+          git rm pre-built/*.node
+          git checkout "origin/${{ steps.vars.outputs.current_branch }}" pre-built/*.node
+          git commit -m "Updated binary modules [skip ci]"
+          git push
