@@ -174,8 +174,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
 
                 let sub_slice = slicer.slice();
                 // legacy helper call
-                if sub_slice.starts_with("function.") {
-                    let helper_name = sub_slice[9..].to_string();
+                if let Some(helper_name) = sub_slice.strip_prefix("function.") {
                     output.push(TokenPos {
                         start: slicer.start,
                         end: slicer.start + 9,
@@ -184,7 +183,7 @@ fn lex_expression(slicer: &mut StringSlicer) -> Option<Vec<TokenPos>> {
                     output.push(TokenPos {
                         start: slicer.start + 9,
                         end: slicer.end,
-                        tok: Token::Identifier(helper_name),
+                        tok: Token::Identifier(helper_name.to_string()),
                     });
 
                     slicer.step();

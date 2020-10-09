@@ -206,21 +206,78 @@ pub fn fix_extra_instructions(source: &str, input: Vec<InstructionPos>) -> Vec<I
     if ends_count > starts_count {
         let mut diff = ends_count - starts_count;
 
-        println!("Found extra token(s):");
+        println!("[benchpress] Found extra token(s)");
+        println!("=================================");
 
         let output: Vec<InstructionPos> = input
             .into_iter()
             .map(|inst| {
                 if remove.contains(&inst) && diff > 0 {
-                    let inst_source = inst.get_source(source);
-                    println!("{}", inst_source);
+                    let mut start_of_line = None;
+                    let mut end_of_line = None;
+
+                    // trace back two lines or beginning of file
+                    let mut start = inst.start;
+                    let mut found = 0;
+                    while start > 0 {
+                        // three times:
+                        //  1. start of current line
+                        //  2. start of previous line
+                        //  3. start of previous previous line
+                        if source.is_char_boundary(start) && source[start..].starts_with('\n') {
+                            found += 1;
+                            if found >= 3 {
+                                break;
+                            }
+
+                            // when we find the first one, save the position so we can insert a highlight line
+                            start_of_line.get_or_insert(start);
+                        }
+                        start -= 1;
+                    }
+
+                    // trace forward two lines or end of file
+                    let mut end = inst.end;
+                    let mut found = 0;
+                    while end < source.len() {
+                        // three times:
+                        //  1. end of current line
+                        //  2. end of next line
+                        //  3. end of next next line
+                        if source.is_char_boundary(end) && source[end..].starts_with('\n') {
+                            found += 1;
+                            if found >= 3 {
+                                break;
+                            }
+
+                            // when we find the first one, save the position so we can insert a highlight line
+                            end_of_line.get_or_insert(end);
+                        }
+                        end += 1;
+                    }
+
+                    let start_of_line = start_of_line.unwrap();
+                    let end_of_line = end_of_line.unwrap();
+
+                    // get instruction with context on either side
+                    let context_before =
+                        source[start..end_of_line].trim_start_matches(|c| c == '\n' || c == '\r');
+                    let highlight_line = format!(
+                        "\n{}{}",
+                        " ".repeat(inst.start - start_of_line - 1),
+                        "^".repeat(inst.end - inst.start)
+                    );
+                    let context_after =
+                        source[end_of_line..end].trim_end_matches(|c| c == '\n' || c == '\r');
+                    println!("{}{}{}", context_before, highlight_line, context_after);
+                    println!("---------------------------------");
 
                     diff -= 1;
                     // replace removed instructions with their source Text
                     InstructionPos {
                         start: inst.start,
                         end: inst.end,
-                        inst: Instruction::Text(inst_source),
+                        inst: Instruction::Text(inst.get_source(source)),
                     }
                 } else {
                     inst
