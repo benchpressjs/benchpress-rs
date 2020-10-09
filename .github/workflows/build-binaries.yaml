@@ -80,5 +80,5 @@ jobs:
         run: |
           git rm pre-built/*.node
           git checkout "origin/${{ steps.vars.outputs.current_branch }}" pre-built/*.node
-          git commit -m "Updated binary modules [skip ci]"
+          git commit -m "Updated binary modules"
           git push
