@@ -9,6 +9,8 @@ on:
     branches-ignore:
       - master_builds
       - test_builds
+  schedule:
+    - cron: '0 0 * * 0' # Weekly, At 00:00 every Sunday
 
 defaults:
   run:
@@ -46,9 +48,6 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # `--release` needed on Windows to avoid the following error:
-          # "Neon only builds with --release. For tests, try `cargo test --release`."
-          args: --release
 
       - name: Check rustfmt
         uses: actions-rs/cargo@v1
@@ -60,17 +59,14 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          # `--release` needed on Windows to avoid the following error:
-          # "Neon only builds with --release. For tests, try `cargo test --release`."
-          args: --release
 
       - name: NPM install
-        run: npm install --ignore-scripts
-
-      - name: Neon build
-        # `--release` needed on Windows to avoid the following error:
-        # "Neon only builds with --release. For tests, try `cargo test --release`."
-        run: node_modules/.bin/neon build --release
+        # Skip fallback to make sure it tests the pre-built modules
+        run: BENCHPRESS_SKIP_FALLBACK=true npm install
 
       - name: Node tests
         run: npm test
+
+      - name: Neon build
+        # Check debug builds work on all toolchains
+        run: node_modules/.bin/neon build

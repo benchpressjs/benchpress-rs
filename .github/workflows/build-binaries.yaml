@@ -47,7 +47,7 @@ jobs:
         run: npm install --ignore-scripts
 
       - name: Neon build
-        run: node_modules/.bin/neon build --release
+        run: npm run build
 
       - name: Add binary
         run: bash scripts/ci/add-binary.sh

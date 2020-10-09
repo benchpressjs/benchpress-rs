@@ -2,7 +2,6 @@
   "name": "benchpress-rs",
   "version": "0.1.0",
   "description": "BenchpressJS compiler written in Rust for speed",
-  "main": "lib/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/benchpressjs/benchpress-rs"
@@ -10,11 +9,12 @@
   "author": "Peter Jaszkowiak <p.jaszkow@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "neon-cli": "^0.4.0"
+    "neon-cli": "^0.4.2"
   },
   "scripts": {
-    "test": "node -p 'require(\"./\").compile(\"{{thing}}\")'",
-    "install": "neon build --release >> build.log 2>&1 || exit 0",
+    "test": "node -p 'require(`./`).compile(`{{thing}}`)'",
+    "build": "neon build --release",
+    "install": "node scripts/install",
     "release": "node scripts/release"
   }
 }
