@@ -12,8 +12,8 @@ name = "benchpress_rs"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-neon-build = "0.4.2"
+neon-build = "0.5.0"
 
 [dependencies]
-neon = "0.4.2"
+neon = "0.5.0"
 benchpress_sys = { path = "../benchpress_sys" }

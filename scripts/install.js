@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const dest = path.join(__dirname, '../index.node');
 
@@ -10,7 +10,11 @@ function build_module() {
   console.log('[benchpress] Building native module from source...');
 
   try {
-    execSync('npm run build');
+    execFileSync(
+      path.join(__dirname, '../node_modules/.bin/neon'),
+      ['build', '--release'],
+      { stdio: 'inherit' }
+    );
   } catch (err) {
     console.error('[benchpress] FATAL: Fallback build failed. For more info, see https://github.com/benchpressjs/benchpressjs#manually-building-native-module');
     process.exit(1);
@@ -21,7 +25,7 @@ function build_module() {
   fs.copyFileSync(source, dest);
 }
 
-if (process.env.npm_config_build_from_source === 'true') {
+if (process.env.npm_config_build_from_source === 'true' || process.env.BENCHPRESS_FORCE_BUILD === 'true') {
   build_module();
   console.log('[benchpress] Successfully completed install step.');
   return;
@@ -47,7 +51,7 @@ if (prebuilt_module_exists()) {
   fs.copyFileSync(modulePath, dest);
 } else {
   console.warn('[benchpress] No compatible pre-built native module found!', {
-    platform: process.platform, module_version: process.versions.modules
+    platform: process.platform, module_version: process.versions.modules, node: process.versions.node
   });
 
   if (process.env.BENCHPRESS_SKIP_FALLBACK === 'true') {

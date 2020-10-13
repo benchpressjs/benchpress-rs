@@ -9,12 +9,12 @@
   "author": "Peter Jaszkowiak <p.jaszkow@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "neon-cli": "^0.4.2"
+    "neon-cli": "^0.5.0"
   },
   "scripts": {
     "test": "node -p 'require(`./`).compile(`{{thing}}`)'",
     "build": "neon build --release",
-    "install": "node scripts/install",
+    "postinstall": "node scripts/install",
     "release": "node scripts/release"
   }
 }
